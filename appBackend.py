@@ -1,3 +1,4 @@
+from flask import Flask
 from datetime import datetime
 from pprint import pprint
 
@@ -121,7 +122,7 @@ def list_cars():
     return CARS
 
 def car_summary(car):
-    # Formats a summary for user. Assigns each printable aspect a key and value??????? for ease of display
+    # Formats a summary for user. Assigns each printable aspect a key and value for ease of display
     return {
         "Car ID": car["id"],
         "Car Name": f'{car["year"]} {car["make"]} {car["model"]}',
@@ -161,7 +162,7 @@ if __name__ == "__main__":
         print(
             f'#{e["id"]} {format_mmddyy(e["date"])} '
             f'{e["category"]}: {e["subcategory"]} '
-            f'Miles={e["mileage"]} | Cost={e["cost"]} | Notes={e["notes"]}'
+            f'Miles = {e["mileage"]} | Cost = {e["cost"]} | Notes = {e["notes"]}'
         )
 
     # Quick checks (will raise AssertionError if something is wrong)
