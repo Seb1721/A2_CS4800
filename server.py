@@ -4,6 +4,7 @@ from car_data import add_car, add_service, update_mileage, list_cars, find_car, 
 
 app = Flask(__name__)
 
+# Seed with test values to showcase functionality
 _seeded = False
 def seed():
     global _seeded
@@ -19,18 +20,24 @@ def seed():
 
     add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost="220")
 
+# Mapping url requests to program
+#
+# Make landing page
 @app.route("/")
 def home():
     seed()
+    # Remember to use &amp; to display '&' character correctly on page
+    # %20 means a space, which cannot naturally exist in url
     return (
-        "Try:<br>"
+        "Try these URLs:<br>"
         "/cars<br>"
         "/car?id=1<br>"
-        "/add_car?make=Ford&model=Ranger&year=2004&current_mileage=210000<br>"
-        "/mileage?car_id=1&new_mileage=116900<br>"
-        "/service?car_id=1&date=03/20/26&mileage=116800&category=Oil&subcategory=Topoff&notes=Added%201qt&cost=9.50<br>"
+        "/add_car?make=Ford&amp;model=Ranger&ampyear=2004&amp;current_mileage=210000<br>"
+        "/mileage?car_id=1&amp;new_mileage=116900<br>"
+        "/service?car_id=1&amp;date=03/20/26&amp;mileage=116800&amp;category=Oil&amp;subcategory=Topoff&amp;notes=Added%201qt&amp;cost=9.50<br>"
     )
 
+# Map url for displaying cars
 @app.route("/cars")
 def cars():
     seed()
@@ -40,6 +47,8 @@ def cars():
 @app.route("/car")
 def car():
     seed()
+    # 'request.args' holds the arguments being passed into the url query (after the ?).
+    # In the test case it's the id=1 located in the url. If the id cannot be found, use 0 to trigger warning
     car_id = int(request.args.get("id", "0"))
     c = find_car(car_id)
     if not c:
