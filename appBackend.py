@@ -1,6 +1,6 @@
-from flask import Flask, request
+from flask import Flask, render_template, request
 from pprint import pformat
-from car_data import add_car, add_service, update_mileage, list_cars, find_car, car_summary
+from car_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
 
 app = Flask(__name__)
 
@@ -20,29 +20,31 @@ def seed():
 
     add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost="220")
 
-# Mapping url requests to program
-#
-# Make landing page
 @app.route("/")
+def start_index():
+    return render_template("index.html")
+
+@app.route("/test")
 def home():
     seed()
-    # Remember to use &amp; to display '&' character correctly on page
-    # %20 means a space, which cannot naturally exist in url
+    # Use &amp; so the page displays '&' correctly (HTML escaping)
+    # %20 in notes means a space in the URL
     return (
         "Try these URLs:<br>"
         "/cars<br>"
         "/car?id=1<br>"
-        "/add_car?make=Ford&amp;model=Ranger&ampyear=2004&amp;current_mileage=210000<br>"
+        "/add_car?make=Ford&amp;model=Ranger&amp;year=2004&amp;current_mileage=210000<br>"
         "/mileage?car_id=1&amp;new_mileage=116900<br>"
         "/service?car_id=1&amp;date=03/20/26&amp;mileage=116800&amp;category=Oil&amp;subcategory=Topoff&amp;notes=Added%201qt&amp;cost=9.50<br>"
     )
 
-# Map url for displaying cars
+
 @app.route("/cars")
 def cars():
     seed()
     summaries = [car_summary(c) for c in list_cars()]
     return "<pre>" + pformat(summaries) + "</pre>"
+
 
 @app.route("/car")
 def car():
@@ -55,6 +57,7 @@ def car():
         return f"Car id {car_id} not found", 404
     return "<pre>" + pformat(c) + "</pre>"
 
+
 @app.route("/add_car")
 def add_car_route():
     seed()
@@ -62,21 +65,26 @@ def add_car_route():
     model = request.args.get("model", "")
     year = request.args.get("year", "")
     current_mileage = request.args.get("current_mileage", "0")
+
     if not (make and model and year):
         return "Missing make/model/year", 400
+
     c = add_car(make, model, year, current_mileage)
     return "<pre>" + pformat(car_summary(c)) + "</pre>"
+
 
 @app.route("/mileage")
 def mileage():
     seed()
     car_id = int(request.args.get("car_id", "0"))
     new_mileage = request.args.get("new_mileage", "")
+
     try:
         c = update_mileage(car_id, new_mileage)
         return "<pre>" + pformat(car_summary(c)) + "</pre>"
     except Exception as e:
         return str(e), 400
+
 
 @app.route("/service")
 def service():
@@ -94,6 +102,7 @@ def service():
         return "<pre>" + pformat(entry) + "</pre>"
     except Exception as e:
         return str(e), 400
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
