@@ -4,7 +4,7 @@ from app_database import add_car, add_service, update_mileage, list_cars, find_c
 
 app = Flask(__name__)
 
-# Seed with test values to showcase functionality
+# Seeds with test values to showcase functionality
 _seeded = False
 def seed():
     global _seeded
