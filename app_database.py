@@ -134,39 +134,39 @@ def car_summary(car):
 # Testing
 # -------------------------
 
-if __name__ == "__main__":
-    # Add cars
-    c1 = add_car("Honda", "Civic", 2018, 116000)
-    c2 = add_car("Toyota", "Camry", 2012, 153200)
+# if __name__ == "__main__":
+#     # Add cars
+#     c1 = add_car("Honda", "Civic", 2018, 116000)
+#     c2 = add_car("Toyota", "Camry", 2012, 153200)
 
-    # Update mileage
-    update_mileage(c1["id"], 116250)
+#     # Update mileage
+#     update_mileage(c1["id"], 116250)
 
-    # Add services (with different cost cases)
-    add_service(c1["id"], "02/20/26", 116000, "Oil", "Oil change", notes="0W-20 synthetic", cost="52.10")
-    add_service(c1["id"], "03/01/26", 116250, "Tires", "Rotation", notes="Front->back", cost=0)
-    add_service(c1["id"], "03/10/26", 116400, "Inspection", "Safety check", notes="No charge", cost="")
+#     # Add services (with different cost cases)
+#     add_service(c1["id"], "02/20/26", 116000, "Oil", "Oil change", notes="0W-20 synthetic", cost="52.10")
+#     add_service(c1["id"], "03/01/26", 116250, "Tires", "Rotation", notes="Front->back", cost=0)
+#     add_service(c1["id"], "03/10/26", 116400, "Inspection", "Safety check", notes="No charge", cost="")
 
-    add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost=220)
+#     add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost=220)
 
-    # Print summaries
-    print("\n--- Car Summaries ---")
-    for car in list_cars():
-        pprint(car_summary(car))
+#     # Print summaries
+#     print("\n--- Car Summaries ---")
+#     for car in list_cars():
+#         pprint(car_summary(car))
 
-    # Print detailed service history for c1
-    print("\n--- Service History for c1 ---")
-    car = find_car(c1["id"])
-    for e in car["service_history"]:
-        print(
-            f'#{e["id"]} {format_mmddyy(e["date"])} '
-            f'{e["category"]}: {e["subcategory"]} '
-            f'Miles = {e["mileage"]} | Cost = {e["cost"]} | Notes = {e["notes"]}'
-        )
+#     # Print detailed service history for c1
+#     print("\n--- Service History for c1 ---")
+#     car = find_car(c1["id"])
+#     for e in car["service_history"]:
+#         print(
+#             f'#{e["id"]} {format_mmddyy(e["date"])} '
+#             f'{e["category"]}: {e["subcategory"]} '
+#             f'Miles = {e["mileage"]} | Cost = {e["cost"]} | Notes = {e["notes"]}'
+#         )
 
-    # Quick checks (will raise AssertionError if something is wrong)
-    assert find_car(c1["id"])["current_mileage"] == 116400
-    assert round(find_car(c1["id"])["lifetime_cost"], 2) == 52.10  # only the paid one counts
-    assert round(find_car(c2["id"])["lifetime_cost"], 2) == 220.00
+#     # Quick checks (will raise AssertionError if something is wrong)
+#     assert find_car(c1["id"])["current_mileage"] == 116400
+#     assert round(find_car(c1["id"])["lifetime_cost"], 2) == 52.10  # only the paid one counts
+#     assert round(find_car(c2["id"])["lifetime_cost"], 2) == 220.00
 
-    print("\nAll tests passed.")
+#     print("\nAll tests passed.")

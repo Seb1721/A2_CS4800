@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from pprint import pformat
-from car_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
+from app_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
 
 app = Flask(__name__)
 
@@ -20,10 +20,13 @@ def seed():
 
     add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost="220")
 
+# Index and current landing page
 @app.route("/")
 def start_index():
+    seed()
     return render_template("index.html")
 
+# Provides basic testing for urls, will delete soon
 @app.route("/test")
 def home():
     seed()
@@ -38,26 +41,27 @@ def home():
         "/service?car_id=1&amp;date=03/20/26&amp;mileage=116800&amp;category=Oil&amp;subcategory=Topoff&amp;notes=Added%201qt&amp;cost=9.50<br>"
     )
 
-
+# Placeholder / may remove
 @app.route("/cars")
 def cars():
     seed()
     summaries = [car_summary(c) for c in list_cars()]
+
     return "<pre>" + pformat(summaries) + "</pre>"
 
-
-@app.route("/car")
-def car():
+@app.route("/car_info")
+def car_info():
     seed()
     # 'request.args' holds the arguments being passed into the url query (after the ?).
     # In the test case it's the id=1 located in the url. If the id cannot be found, use 0 to trigger warning
     car_id = int(request.args.get("id", "0"))
     c = find_car(car_id)
     if not c:
-        return f"Car id {car_id} not found", 404
-    return "<pre>" + pformat(c) + "</pre>"
+        return jsonify({"error": f"Car id {car_id} not found"}), 404
+    
+    return jsonify(car_summary(c))  
 
-
+# Need to flesh out as its own url/function
 @app.route("/add_car")
 def add_car_route():
     seed()
@@ -72,7 +76,7 @@ def add_car_route():
     c = add_car(make, model, year, current_mileage)
     return "<pre>" + pformat(car_summary(c)) + "</pre>"
 
-
+# Add a url/function to adjust/update service and mileage information
 @app.route("/mileage")
 def mileage():
     seed()
@@ -85,7 +89,7 @@ def mileage():
     except Exception as e:
         return str(e), 400
 
-
+# merge with above 
 @app.route("/service")
 def service():
     seed()
