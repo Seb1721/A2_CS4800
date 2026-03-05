@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarKeeper</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename='appScripts.js') }}" defer></script>
+
+</head>
+<body>
+    <h1>Welcome to CarKeeper!</h1>
+    <p>Please enter the desired Car ID</p>
+    <!-- Creates a input field with an id -->
+    <input id="entered_car_id" type="text"/>
+    <!-- Creates a button with an id -->
+    <button id="enter_btn" type="button">Enter</button>
+    <div id="car_result" style="margin-top: 16px;"></div>
+</body>
+</html>

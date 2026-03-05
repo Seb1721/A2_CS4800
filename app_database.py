@@ -1,8 +1,5 @@
-from flask import Flask, render_template, request, jsonify
-from pprint import pformat
-from app_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
-
-app = Flask(__name__)
+from datetime import datetime
+from pprint import pprint
 
 # Helper functions to fix formatting of 'datetime' date object
 # Parses date string 
@@ -12,50 +9,10 @@ def parse_mmddyy(service_date):
     except ValueError:
         raise ValueError("Date must be in mm/dd/yy format.")
 
-# Seed with test values to showcase functionality
-_seeded = False
-def seed():
-    global _seeded
-    if _seeded:
-        return
-    _seeded = True
+# Formats mmddyy into string
+def format_mmddyy(service_date):
+    return service_date.strftime("%m/%d/%y") if service_date is not None else "N/A"
 
-    c1 = add_car("Honda", "Civic", 2018, 116000)
-    c2 = add_car("Toyota", "Camry", 2012, 153200)
-
-    add_service(c1["id"], "02/20/26", 116000, "Oil", "Oil change", notes="0W-20 synthetic", cost="52.10")
-    add_service(c1["id"], "03/10/26", 116400, "Inspection", "Safety check", notes="No charge", cost="")
-
-    add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost="220")
-
-# Index and current landing page
-@app.route("/")
-def start_index():
-    seed()
-    return render_template("index.html")
-
-# Placeholder / may remove
-@app.route("/all_cars")
-def all_cars():
-    seed()
-    summaries = [car_summary(c) for c in list_cars()]
-
-    return "<pre>" + pformat(summaries) + "</pre>"
-
-@app.route("/car_info")
-def car_info():
-    seed()
-    # 'request.args' holds the arguments being passed into the url query (after the ?).
-    # In the test case it's the id=1 located in the url. If the id cannot be found, use 0 to trigger warning
-    car_id = int(request.args.get("id", "0"))
-    c = find_car(car_id)
-    if not c:
-        return jsonify({"error": f"Car id {car_id} not found"}), 404
-    
-    return jsonify(car_summary(c))  
-
-if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
 # Creates a list of car objects named CARS
 CARS = []
 
@@ -172,3 +129,44 @@ def car_summary(car):
         "Last Service Date": format_mmddyy(car["last_service_date"]),
         "Lifetime Expenses": round(car["lifetime_cost"], 2)
     }
+
+# -------------------------
+# Testing
+# -------------------------
+
+# if __name__ == "__main__":
+#     # Add cars
+#     c1 = add_car("Honda", "Civic", 2018, 116000)
+#     c2 = add_car("Toyota", "Camry", 2012, 153200)
+
+#     # Update mileage
+#     update_mileage(c1["id"], 116250)
+
+#     # Add services (with different cost cases)
+#     add_service(c1["id"], "02/20/26", 116000, "Oil", "Oil change", notes="0W-20 synthetic", cost="52.10")
+#     add_service(c1["id"], "03/01/26", 116250, "Tires", "Rotation", notes="Front->back", cost=0)
+#     add_service(c1["id"], "03/10/26", 116400, "Inspection", "Safety check", notes="No charge", cost="")
+
+#     add_service(c2["id"], "01/15/26", 153200, "Brakes", "Pads", notes="Front pads", cost=220)
+
+#     # Print summaries
+#     print("\n--- Car Summaries ---")
+#     for car in list_cars():
+#         pprint(car_summary(car))
+
+#     # Print detailed service history for c1
+#     print("\n--- Service History for c1 ---")
+#     car = find_car(c1["id"])
+#     for e in car["service_history"]:
+#         print(
+#             f'#{e["id"]} {format_mmddyy(e["date"])} '
+#             f'{e["category"]}: {e["subcategory"]} '
+#             f'Miles = {e["mileage"]} | Cost = {e["cost"]} | Notes = {e["notes"]}'
+#         )
+
+#     # Quick checks (will raise AssertionError if something is wrong)
+#     assert find_car(c1["id"])["current_mileage"] == 116400
+#     assert round(find_car(c1["id"])["lifetime_cost"], 2) == 52.10  # only the paid one counts
+#     assert round(find_car(c2["id"])["lifetime_cost"], 2) == 220.00
+
+#     print("\nAll tests passed.")
