@@ -26,24 +26,9 @@ def start_index():
     seed()
     return render_template("index.html")
 
-# Provides basic testing for urls, will delete soon
-@app.route("/test")
-def home():
-    seed()
-    # Use &amp; so the page displays '&' correctly (HTML escaping)
-    # %20 in notes means a space in the URL
-    return (
-        "Try these URLs:<br>"
-        "/cars<br>"
-        "/car?id=1<br>"
-        "/add_car?make=Ford&amp;model=Ranger&amp;year=2004&amp;current_mileage=210000<br>"
-        "/mileage?car_id=1&amp;new_mileage=116900<br>"
-        "/service?car_id=1&amp;date=03/20/26&amp;mileage=116800&amp;category=Oil&amp;subcategory=Topoff&amp;notes=Added%201qt&amp;cost=9.50<br>"
-    )
-
 # Placeholder / may remove
-@app.route("/cars")
-def cars():
+@app.route("/all_cars")
+def all_cars():
     seed()
     summaries = [car_summary(c) for c in list_cars()]
 
@@ -60,53 +45,6 @@ def car_info():
         return jsonify({"error": f"Car id {car_id} not found"}), 404
     
     return jsonify(car_summary(c))  
-
-# Need to flesh out as its own url/function
-@app.route("/add_car")
-def add_car_route():
-    seed()
-    make = request.args.get("make", "")
-    model = request.args.get("model", "")
-    year = request.args.get("year", "")
-    current_mileage = request.args.get("current_mileage", "0")
-
-    if not (make and model and year):
-        return "Missing make/model/year", 400
-
-    c = add_car(make, model, year, current_mileage)
-    return "<pre>" + pformat(car_summary(c)) + "</pre>"
-
-# Add a url/function to adjust/update service and mileage information
-@app.route("/mileage")
-def mileage():
-    seed()
-    car_id = int(request.args.get("car_id", "0"))
-    new_mileage = request.args.get("new_mileage", "")
-
-    try:
-        c = update_mileage(car_id, new_mileage)
-        return "<pre>" + pformat(car_summary(c)) + "</pre>"
-    except Exception as e:
-        return str(e), 400
-
-# merge with above 
-@app.route("/service")
-def service():
-    seed()
-    car_id = int(request.args.get("car_id", "0"))
-    date = request.args.get("date", "")
-    mileage = request.args.get("mileage", "")
-    category = request.args.get("category", "")
-    subcategory = request.args.get("subcategory", "")
-    notes = request.args.get("notes", "")
-    cost = request.args.get("cost", "")
-
-    try:
-        entry = add_service(car_id, date, mileage, category, subcategory, notes=notes, cost=cost)
-        return "<pre>" + pformat(entry) + "</pre>"
-    except Exception as e:
-        return str(e), 400
-
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
