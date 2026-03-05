@@ -1,17 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 from pprint import pformat
-from datetime import datetime
 from app_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
 
 app = Flask(__name__)
-
-# Helper functions to fix formatting of 'datetime' date object
-# Parses date string 
-def parse_mmddyy(service_date):
-    try:
-        return datetime.strptime(service_date.strip(), "%m/%d/%y").date()
-    except ValueError:
-        raise ValueError("Date must be in mm/dd/yy format.")
 
 # Seed with test values to showcase functionality
 _seeded = False
@@ -46,8 +37,6 @@ def all_cars():
 @app.route("/car_info")
 def car_info():
     seed()
-    # 'request.args' holds the arguments being passed into the url query (after the ?).
-    # In the test case it's the id=1 located in the url. If the id cannot be found, use 0 to trigger warning
     car_id = int(request.args.get("id", "0"))
     c = find_car(car_id)
     if not c:
