@@ -12,8 +12,13 @@ def seed():
         return
     _seeded = True
 
-    c1 = add_car("Honda", "Civic", 2018, 116000)
-    c2 = add_car("Toyota", "Camry", 2012, 153200)
+    c1 = add_car("Honda", "Civic", 2018, 116000,
+                 "https://file.kelleybluebookimages.com/kbb/base/evox/CP/11185/2018-Honda-Civic-front_11185_032_2400x1800_WA.png"
+    )
+    
+    c2 = add_car("Toyota", "Camry", 2012, 153200,
+                 "https://file.kelleybluebookimages.com/kbb/images/content/editorial/2012%20Toyota%20Camry%20SE%20Limited%20Edition%20front%20static.jpg"
+    )
 
     add_service(c1["id"], "02/20/26", 116000, "Oil", "Oil change", notes="0W-20 synthetic", cost="52.10")
     add_service(c1["id"], "03/10/26", 116400, "Inspection", "Safety check", notes="No charge", cost="")
@@ -22,20 +27,20 @@ def seed():
 
 # Index and current landing page
 @app.route("/")
-def start_index():
+def start_index_route():
     seed()
     return render_template("index.html")
 
 # Placeholder / may remove
 @app.route("/all_cars")
-def all_cars():
+def all_cars_route():
     seed()
     summaries = [car_summary(c) for c in list_cars()]
 
     return "<pre>" + pformat(summaries) + "</pre>"
 
-@app.route("/car_info")
-def car_info():
+@app.route("/car_info") # Default --> methods=["GET"]
+def car_info_route():
     seed()
     car_id = int(request.args.get("id", "0"))
     c = find_car(car_id)
@@ -43,6 +48,35 @@ def car_info():
         return jsonify({"error": f"Car id {car_id} not found"}), 404
     
     return jsonify(car_summary(c))  
+
+@app.route("/add_car", methods=["POST"])
+def add_car_route():
+    seed()
+    data = request.get_json()
+
+    try:
+        make = data.get("make", "").strip()
+        model = data.get("model", "").strip()
+        year = int(data.get("year", 0))
+        mileage = int(data.get("mileage", 0))
+        image_url = data.get("image_url", "").strip()
+
+        if not make or not model:
+            return jsonify({"error": "Make and model are required."}), 400
+        
+        if year <= 0:
+            return jsonify({"error": "Enter a valid year."}), 400
+        
+        if mileage < 0:
+            return jsonify({"error": "Mileage cannot be negative."}), 400
+        
+        new_car = add_car(make, model, year, mileage, image_url)
+
+        return jsonify(car_summary(new_car)), 201
+
+    except ValueError:
+        return jsonify({"error": "Year and mileage must be valid numbers."}), 400
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

@@ -6,15 +6,33 @@
     <title>CarKeeper</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='appScripts.js') }}" defer></script>
-
 </head>
 <body>
     <h1>Welcome to CarKeeper!</h1>
     <p>Please enter the desired Car ID</p>
-    <!-- Creates a input field with an id -->
-    <input id="entered_car_id" type="text"/>
-    <!-- Creates a button with an id -->
+
+    <!-- Input field for user to enter car ID -->
+    <input id="entered_car_id" type="text"/> 
+
+    <!-- Button used to submit entered car ID -->
     <button id="enter_btn" type="button">Enter</button>
+
+    <hr>
+
+    <!-- Section to add new car -->
+     <!-- 'placeholder' field refers to "hint" in input box before typing -->
+    <h2>Add New Car</h2>   
+    <input id="make" type="text" placeholder="Make" />
+    <input id="model" type="text" placeholder="Model" />
+    <input id="year" type="number" placeholder="Year" />
+    <input id="mileage" type="number" placeholder="Current Mileage" />
+
+    <!-- Currently requires user to enter own url for each car -->
+    <input id="image_url" type="text" placeholder="Image URL (optional)" />
+
+    <button id="add_car_btn" type="button">Add Car</button>
+
+    <!-- Container to display car search result -->
     <div id="car_result" style="margin-top: 16px;"></div>
 </body>
 </html>

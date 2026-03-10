@@ -1,5 +1,5 @@
 from datetime import datetime
-from pprint import pprint
+#from pprint import pprint
 
 # Helper functions to fix formatting of 'datetime' date object
 # Parses date string 
@@ -36,7 +36,7 @@ def _new_service_id():
     return service_id
 
 # Core operations
-def add_car(make, model, year, current_mileage=0):
+def add_car(make, model, year, current_mileage=0, image_url=""):
     # Adds car into CARS list
     # Each car is a dictionary. Adds descriptors and information in k/v pairs.
     car = {
@@ -47,7 +47,8 @@ def add_car(make, model, year, current_mileage=0):
         "current_mileage": int(current_mileage),
         "last_service_date": None,
         "service_history": [],
-        "lifetime_cost": 0.0
+        "lifetime_cost": 0.0,
+        "image_url": image_url.strip()
     }
     # Adds car dictionary object to list of CARS & returns 
     CARS.append(car)
@@ -127,7 +128,8 @@ def car_summary(car):
         "Car Name": f'{car["year"]} {car["make"]} {car["model"]}',
         "Current Mileage": car["current_mileage"],
         "Last Service Date": format_mmddyy(car["last_service_date"]),
-        "Lifetime Expenses": round(car["lifetime_cost"], 2)
+        "Lifetime Expenses": round(car["lifetime_cost"], 2),
+        "Image URL": car["image_url"]
     }
 
 # -------------------------
