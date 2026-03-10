@@ -30,7 +30,6 @@ $(function () {
                 >
             `;
         }
-
         $out.html(html);
     }
 
@@ -68,7 +67,6 @@ $(function () {
                 } else if (xhr.status === 404) {
                     msg = "Car not found.";
                 }
-
                 renderError(msg);
             }
         });
@@ -121,7 +119,6 @@ $(function () {
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     msg = xhr.responseJSON.error;
                 }
-
                 renderError(msg);
             }
         });
