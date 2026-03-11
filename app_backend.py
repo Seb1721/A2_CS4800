@@ -12,6 +12,9 @@ def seed():
         return
     _seeded = True
 
+    if len(list_cars()) > 0:
+        return
+
     c1 = add_car("Honda", "Civic", 2018, 116000,
                  "https://file.kelleybluebookimages.com/kbb/base/evox/CP/11185/2018-Honda-Civic-front_11185_032_2400x1800_WA.png"
     )
