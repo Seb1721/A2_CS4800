@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from pprint import pformat
-from app_database import add_car, add_service, update_mileage, list_cars, find_car, car_summary
+from A2_CS4800.carkeeper_app import add_car, add_service, update_mileage, list_cars, find_car, car_summary
 
 app = Flask(__name__)
 
@@ -39,15 +39,19 @@ def all_cars_route():
 
     return "<pre>" + pformat(summaries) + "</pre>"
 
-@app.route("/car_info") # Default --> methods=["GET"]
+@app.route("/car_info")
 def car_info_route():
     seed()
-    car_id = int(request.args.get("id", "0"))
+    try:
+        car_id = int(request.args.get("id", "0"))
+    except ValueError:
+        return jsonify({"error": "Car id must be a valid number."}), 400
+
     c = find_car(car_id)
     if not c:
         return jsonify({"error": f"Car id {car_id} not found"}), 404
     
-    return jsonify(car_summary(c))  
+    return jsonify(car_summary(c)) 
 
 @app.route("/add_car", methods=["POST"])
 def add_car_route():

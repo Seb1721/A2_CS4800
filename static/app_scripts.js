@@ -52,13 +52,13 @@ $(function () {
             data: { id: id },
 
             success: function (data) {
-                console.log("Request succeeded: /car?id=" + id);
+                console.log("Request succeeded: car_info?id=" + id);
                 console.log("Response data:", data);
                 renderCarSummary(data);
             },
 
             error: function (xhr) {
-                console.log("Request failed: /car?id=" + id);
+                console.log("Request failed: car_info?id=" + id);
                 console.log("HTTP status:", xhr.status);
             
                 let msg = "Could not fetch car.";

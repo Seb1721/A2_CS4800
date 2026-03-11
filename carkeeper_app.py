@@ -1,5 +1,15 @@
+import os
 from datetime import datetime
-#from pprint import pprint
+from pymongo import MongoClient
+
+# Add env variable for MONGODB_URI upon new terminal open
+MONGODB_URI = os.getenv("MONGODB_URI")
+client = MongoClient(MONGODB_URI)
+if not MONGODB_URI:
+    raise ValueError("MONGODB_URI environment variable is not set.")
+
+db = client["car_info"]
+collection = db["car_summary"]
 
 # Helper functions to fix formatting of 'datetime' date object
 # Parses date string 
@@ -25,6 +35,7 @@ def _new_car_id():
     global _next_car_id
     car_id = _next_car_id
     _next_car_id += 1
+
     return car_id
 
 def _new_service_id():
@@ -33,10 +44,11 @@ def _new_service_id():
     global _next_service_id
     service_id = _next_service_id
     _next_service_id += 1
+
     return service_id
 
 # Core operations
-def add_car(make, model, year, current_mileage=0, image_url=""):
+def add_car(make, model, year, current_mileage=0, image_url="", last_service_date=""):
     # Adds car into CARS list
     # Each car is a dictionary. Adds descriptors and information in k/v pairs.
     car = {
@@ -45,20 +57,23 @@ def add_car(make, model, year, current_mileage=0, image_url=""):
         "model": model,
         "year": int(year),
         "current_mileage": int(current_mileage),
-        "last_service_date": None,
+        "last_service_date": parse_mmddyy(last_service_date) if last_service_date else None,
         "service_history": [],
         "lifetime_cost": 0.0,
         "image_url": image_url.strip()
     }
     # Adds car dictionary object to list of CARS & returns 
     CARS.append(car)
+    # collection.insert_one(car)   // mongodb storage method
+
     return car 
 
 def find_car(car_id):
     # Returns the car dictionary for the given car id, None if not found
     for car in CARS:
-        if car["id"] == car_id:
+        if car["id"] == int(car_id):
             return car
+        
     return None 
 
 def update_mileage(car_id, new_mileage):
@@ -74,9 +89,10 @@ def update_mileage(car_id, new_mileage):
         raise ValueError("Mileage cannot go backwards.")
     
     car["current_mileage"] = new_mileage 
+
     return car
 
-def add_service(car_id, service_date, mileage, category, subcategory, notes="", cost=None):
+def add_service(car_id, service_date, mileage, service_type, description="", notes="", cost=0):
     # Adds a service entry to a specific car. Service date should be datetime format (ex: date(2026, 2, 22))
     car = find_car(car_id)
     if car is None:
@@ -99,8 +115,8 @@ def add_service(car_id, service_date, mileage, category, subcategory, notes="", 
         "id": _new_service_id(),
         "date": service_date,
         "mileage": int(mileage),
-        "category": category,
-        "subcategory": subcategory, 
+        "service_type": service_type,
+        "description": description, 
         "notes": notes,
         "cost": cost_value
     }
@@ -122,14 +138,14 @@ def list_cars():
     return CARS
 
 def car_summary(car):
-    # Formats a summary for user. Assigns each printable aspect a key and value for ease of display
+    # Returns a formatted dictionary that can be sent as JSON for a car object
     return {
         "Car ID": car["id"],
         "Car Name": f'{car["year"]} {car["make"]} {car["model"]}',
         "Current Mileage": car["current_mileage"],
         "Last Service Date": format_mmddyy(car["last_service_date"]),
         "Lifetime Expenses": round(car["lifetime_cost"], 2),
-        "Image URL": car["image_url"]
+        "Image URL": car.get("image_url", "")
     }
 
 # -------------------------
