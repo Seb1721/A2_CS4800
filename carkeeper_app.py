@@ -18,7 +18,7 @@ TOTAL_SERVICES = 0
 # Parses date string 
 def parse_mmddyy(service_date):
     try:
-        return datetime.strptime(service_date.strip(), "%m/%d/%y").date()
+        return datetime.strptime(service_date.strip(), "%m/%d/%y")
     except ValueError:
         raise ValueError("Date must be in mm/dd/yy format.")
 
@@ -142,7 +142,7 @@ def add_service(car_id, service_date, mileage, service_type, description="", not
         updated_fields["current_mileage"] = mileage
     
     if cost_value is not None:
-        updated_fields["lifetime_cost"] = car.get("lifetime_cost", 0) + cost_value
+        updated_fields["lifetime_cost"] = round(car.get("lifetime_cost", 0) + cost_value, 2)
 
     collection.update_one(
         {"car_id": int(car_id)},

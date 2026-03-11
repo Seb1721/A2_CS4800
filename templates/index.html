@@ -122,7 +122,7 @@
         }
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename='appScripts.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='app_scripts.js') }}" defer></script>
 </head>
 <body>
     <div class="container">
@@ -150,6 +150,19 @@
 
         <button id="add_car_btn" type="button">Add Car</button>
 
+        <hr>
+
+        <!-- Section to add service -->
+        <h2>Add Service</h2>
+        <input id="service_car_id" type="number" placeholder="Car ID" />
+        <input id="service_date" type="text" placeholder="Service Date (MM/DD/YY)" />
+        <input id="service_mileage" type="number" placeholder="Mileage at Service" />
+        <input id="service_type" type="text" placeholder="Service Type" />
+        <input id="service_description" type="text" placeholder="Description (optional)" />
+        <input id="service_notes" type="text" placeholder="Notes (optional)" />
+        <input id="service_cost" type="number" step="0.01" placeholder="Cost (optional)" />
+
+        <button id="add_service_btn" type="button">Add Service</button>
         <!-- Container to display car search result -->
         <div id="car_result"></div>
     </div>

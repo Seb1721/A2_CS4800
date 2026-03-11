@@ -7,6 +7,16 @@ $(function () {
     const $year = $("#year");
     const $mileage = $("#mileage");
     const $imageURL = $("#image_url");
+    // Added
+    const $addServiceButton = $("#add_service_btn");
+    const $serviceCarID = $("#service_car_id");
+    const $serviceDate = $("#service_date");
+    const $serviceMileage = $("#service_mileage");
+    const $serviceType = $("#service_type");
+    const $serviceDescription = $("#service_description");
+    const $serviceNotes = $("#service_notes");
+    const $serviceCost = $("#service_cost");
+    //
     const $out = $("#car_result");
 
     function renderCarSummary(car) {
@@ -18,6 +28,7 @@ $(function () {
                 <li><b>Current Mileage:</b> ${car["Current Mileage"]}</li>
                 <li><b>Last Service Date:</b> ${car["Last Service Date"]}</li>
                 <li><b>Lifetime Expenses:</b> ${car["Lifetime Expenses"]}</li>
+                <li><b>Service Count:</b> ${car["Service Count"]}</li>
             </ul>
         `;
 
@@ -49,7 +60,7 @@ $(function () {
             url: "/car_info",
             method: "GET",
             dataType: "json",
-            data: { id: id },
+            data: { car_id: id },
 
             success: function (data) {
                 console.log("Request succeeded: car_info?id=" + id);
@@ -124,9 +135,66 @@ $(function () {
         });
     }
 
+    function addService() {
+        const car_id = $serviceCarID.val().trim();
+        const service_date = $serviceDate.val().trim();
+        const mileage = $serviceMileage.val().trim();
+        const service_type = $serviceType.val().trim();
+        const description = $serviceDescription.val().trim();
+        const notes = $serviceNotes.val().trim();
+        const cost = $serviceCost.val().trim();
+
+        if (!car_id || !service_date || !mileage || !service_type) {
+            renderError("Car ID, service date, mileage, and service type are required.");
+            return;
+        }
+
+        $.ajax({
+            url: "/add_service",
+            method: "POST",
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({
+                car_id: car_id,
+                service_date: service_date,
+                mileage: mileage,
+                service_type: service_type,
+                description: description,
+                notes: notes,
+                cost: cost
+            }),
+
+            success: function (data) {
+                console.log("Service added successfully.");
+                console.log("Response data:", data);
+                renderCarSummary(data);
+
+                $serviceCarID.val("");
+                $serviceDate.val("");
+                $serviceMileage.val("");
+                $serviceType.val("");
+                $serviceDescription.val("");
+                $serviceNotes.val("");
+                $serviceCost.val("");
+            },
+
+            error: function (xhr) {
+                console.log("Add service failed.");
+                console.log("HTTP status:", xhr.status);
+
+                let msg = "Could not add service.";
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    msg = xhr.responseJSON.error;
+                }
+                renderError(msg);
+            }
+        });
+    }
+
     // Click button interactions
     $enterButton.on("click", lookupCar);
     $addCarButton.on("click", addCar);
+    $addServiceButton.on("click", addService);
 
     // Press Enter on keyboard -> lookup
     $inputtedID.on("keydown", function (e) {
