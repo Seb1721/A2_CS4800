@@ -15,7 +15,7 @@ collection = db["car_summary"]
 TOTAL_SERVICES = 0
 
 # Helper functions to fix formatting of 'datetime' date object
-# Parses date string 
+# Parse date string 
 def parse_mmddyy(service_date):
     try:
         return datetime.strptime(service_date.strip(), "%m/%d/%y")
