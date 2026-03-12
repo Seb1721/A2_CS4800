@@ -24,5 +24,6 @@ jobs:
           script: |
             set -e
             cd ~/A2_CS4800
+            chmod +x run.sh
             ./run.sh
             tail -n 50 log.txt
