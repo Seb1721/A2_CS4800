@@ -22,3 +22,6 @@ py .\src\car_data.py
 # Note: Have to re-add env variable for MONGODB_URI upon terminal close/open
 # Get connection string from MongoDB Compass
 $env:MONGODB_URI="your_mongodb_connection_string_here"
+export MONGODB_URI="your_mongodb_connection_string_here"
+# Reactivate venv when entering aws terminal:
+source .venv/bin/activate
