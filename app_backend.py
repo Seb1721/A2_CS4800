@@ -4,10 +4,12 @@ from carkeeper_app import add_car, add_service, update_mileage, list_cars, find_
 
 app = Flask(__name__)
 
-# Seed with test values to showcase functionality
+# Seed with test values on instantiation of db instance
 _seeded = False
 def seed():
     global _seeded
+
+    # If already seeded return without seeding again
     if _seeded:
         return
     _seeded = True
