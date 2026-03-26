@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from pprint import pformat
-from carkeeper_app import add_car, add_service, update_mileage, list_cars, find_car, car_summary
+from carkeeper_app import add_car, add_service, update_mileage, list_cars, find_car, car_summary, car_details
 
 app = Flask(__name__)
 
@@ -56,7 +56,7 @@ def car_info_route():
     if not c:
         return jsonify({"error": f"Car id {car_id} not found"}), 404
     
-    return jsonify(car_summary(c)) 
+    return jsonify(car_details(c)) 
 
 @app.route("/add_car", methods=["POST"])
 def add_car_route():
@@ -116,7 +116,7 @@ def add_service_route():
         add_service(car_id, service_date, mileage, service_type, description, notes, cost)
 
         updated_car = find_car(car_id)
-        return jsonify(car_summary(updated_car)), 200
+        return jsonify(car_details(updated_car)), 200
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

@@ -41,6 +41,31 @@ $(function () {
                 >
             `;
         }
+
+        const history = car["Service History"] || [];
+
+        html += `<h3 style="margin-top: 24px;">Service History</h3>`;
+
+        if (history.length === 0) {
+            html += `<p>No service history recorded yet.</p>`;
+        } else {
+            html += `<ul>`;
+            history.forEach(service => {
+                html += `
+                    <li style="margin-bottom: 14px;">
+                        <b>${service["Date"]}</b> — ${service["Service Type"]} at ${service["Mileage"]} miles
+                        <br>
+                        <b>Description:</b> ${service["Description"] || "N/A"}
+                        <br>
+                        <b>Notes:</b> ${service["Notes"] || "N/A"}
+                        <br>
+                        <b>Cost:</b> ${service["Cost"] !== null && service["Cost"] !== undefined ? `$${service["Cost"]}` : "N/A"}
+                    </li>
+                `;
+            });
+            html += `</ul>`;
+        }
+
         $out.html(html);
     }
 

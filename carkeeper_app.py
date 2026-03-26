@@ -175,4 +175,34 @@ def car_summary(car):
         "Image URL": car.get("image_url", "")
     }
 
+def car_details(car):
+    raw_history = sorted(
+        car.get("service_history", []),
+        key=lambda s: s.get("date"),
+        reverse=True
+    )
+
+    formatted_history = []
+    for service in raw_history:
+        formatted_history.append({
+            "Service ID": service.get("service_id"),
+            "Date": format_mmddyy(service.get("date")),
+            "Mileage": service.get("mileage"),
+            "Service Type": service.get("service_type"),
+            "Description": service.get("description", ""),
+            "Notes": service.get("notes", ""),
+            "Cost": service.get("cost")
+        })
+
+    return {
+        "Car ID": car["car_id"],
+        "Car Name": f'{car["year"]} {car["make"]} {car["model"]}',
+        "Current Mileage": car["current_mileage"],
+        "Last Service Date": format_mmddyy(car.get("last_service_date")),
+        "Lifetime Expenses": round(car.get("lifetime_cost", 0), 2),
+        "Service Count": car.get("service_count", 0),
+        "Image URL": car.get("image_url", ""),
+        "Service History": formatted_history
+    }
+
 initialize_total_services()
