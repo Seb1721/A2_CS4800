@@ -1,14 +1,11 @@
-import os
 from datetime import datetime
 from pymongo import MongoClient
+from secrets_config import get_mongodb_uri
 
-# Add env variable for MONGODB_URI upon new terminal open
-MONGODB_URI = os.getenv("MONGODB_URI")
-if not MONGODB_URI:
-    raise ValueError("MONGODB_URI environment variable is not set.")
+MONGODB_URI = get_mongodb_uri()
+mongo_client = MongoClient(MONGODB_URI)
 
-client = MongoClient(MONGODB_URI)
-db = client["car_info"]
+db = mongo_client["car_info"]
 collection = db["car_summary"]
 
 # Tracks total services across all cars
