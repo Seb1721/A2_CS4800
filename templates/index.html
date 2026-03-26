@@ -1,170 +1,584 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CarKeeper</title>
+
     <style>
+        :root {
+            --bg: #f3f7fc;
+            --surface: #ffffff;
+            --surface-soft: #f8fbff;
+            --border: #dbe6f2;
+            --text: #16202a;
+            --muted: #627284;
+            --primary: #1761c9;
+            --primary-dark: #114ca0;
+            --success-bg: #eef8f0;
+            --success-border: #c9e8d0;
+            --danger-bg: #fff2f2;
+            --danger-border: #f2caca;
+            --shadow: 0 18px 40px rgba(18, 38, 63, 0.08);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7fb;
-            color: #222;
             margin: 0;
-            padding: 40px 20px;
+            font-family: Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(23, 97, 201, 0.08), transparent 28%),
+                radial-gradient(circle at top right, rgba(23, 97, 201, 0.06), transparent 24%),
+                var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 32px 18px 48px;
         }
 
-        .container {
-            max-width: 750px;
+        .page-shell {
+            max-width: 1240px;
             margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
         }
 
-        h1 {
-            color: rgb(17, 97, 201);
+        .hero {
+            background: linear-gradient(135deg, #0f4ea8, #1761c9 55%, #4f8dea);
+            color: white;
+            border-radius: 28px;
+            padding: 32px 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            margin: 0 0 10px;
             font-size: 42px;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 30px;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
         }
 
-        h2 {
-            font-size: 24px;
-            margin-top: 30px;
-            margin-bottom: 10px;
-            color: #333;
-            border-bottom: 2px solid #e6ecf3;
-            padding-bottom: 6px;
+        .hero p {
+            margin: 0;
+            max-width: 720px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 17px;
+            line-height: 1.6;
         }
 
-        p {
-            margin-bottom: 10px;
-            color: #555;
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 360px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+
+        .left-column,
+        .right-column {
+            display: grid;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 18px 20px 0;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 21px;
+            letter-spacing: -0.01em;
+        }
+
+        .card-header p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .field-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #344252;
         }
 
         input[type="text"],
         input[type="number"] {
             width: 100%;
-            padding: 12px 14px;
-            margin: 10px 0;
-            box-sizing: border-box;
-            border: 1px solid #cfd8e3;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid #ced8e5;
+            border-radius: var(--radius-sm);
+            padding: 13px 14px;
+            font-size: 15px;
+            color: var(--text);
+            background: #fff;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+        }
+
+        input[type="text"]::placeholder,
+        input[type="number"]::placeholder {
+            color: #8a99aa;
         }
 
         input[type="text"]:focus,
         input[type="number"]:focus {
             outline: none;
-            border-color: rgb(17, 97, 201);
-            box-shadow: 0 0 0 3px rgba(17, 97, 201, 0.15);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(23, 97, 201, 0.14);
         }
 
-        button {
-            background-color: rgb(17, 97, 201);
-            color: white;
+        .btn {
             border: none;
-            border-radius: 8px;
-            padding: 12px 18px;
-            font-size: 16px;
-            font-weight: bold;
+            border-radius: 12px;
+            padding: 13px 16px;
+            font-size: 15px;
+            font-weight: 700;
             cursor: pointer;
-            margin-top: 8px;
-            transition: background-color 0.2s ease, transform 0.1s ease;
+            transition: transform 0.12s ease, box-shadow 0.18s ease, background-color 0.18s ease;
         }
 
-        button:hover {
-            background-color: rgb(13, 77, 161);
+        .btn:hover {
+            transform: translateY(-1px);
         }
 
-        button:active {
-            transform: scale(0.98);
+        .btn:active {
+            transform: translateY(0);
         }
 
-        hr {
-            border: none;
-            border-top: 1px solid #d8e0ea;
-            margin: 30px 0;
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 10px 20px rgba(23, 97, 201, 0.18);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: #edf3fb;
+            color: #1e3550;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #d8e4f0, transparent);
+            margin: 6px 0 2px;
         }
 
         #car_result {
-            margin-top: 20px;
-            padding: 18px;
-            background-color: #f8fbff;
-            border: 1px solid #d7e7ff;
-            border-radius: 10px;
+            min-height: 460px;
+            background: linear-gradient(180deg, #ffffff, #fbfdff);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 24px;
         }
 
-        #car_result h3 {
-            margin-top: 0;
-            color: rgb(17, 97, 201);
+        .empty-state {
+            min-height: 400px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            color: var(--muted);
         }
 
-        #car_result ul {
-            padding-left: 20px;
-            margin-bottom: 0;
+        .empty-state-inner {
+            max-width: 420px;
         }
 
-        #car_result li {
+        .empty-state-badge {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 18px;
+            border-radius: 18px;
+            background: #eef4fd;
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .empty-state h3 {
+            margin: 0 0 10px;
+            font-size: 24px;
+            color: #233345;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .status-card {
+            border-radius: 16px;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .status-card.error {
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            color: #8b2727;
+        }
+
+        .status-card.success {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: #25613b;
+        }
+
+        .result-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 260px;
+            gap: 22px;
+            align-items: start;
+            margin-bottom: 22px;
+        }
+
+        .result-title h2 {
+            margin: 0 0 10px;
+            font-size: 30px;
+            letter-spacing: -0.02em;
+        }
+
+        .result-subtitle {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .car-image-wrap {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px;
+        }
+
+        .car-image-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
             margin-bottom: 8px;
         }
 
-        #car_result img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin-top: 14px;
-            border-radius: 10px;
-            border: 1px solid #d8e0ea;
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1d2d3d;
+            line-height: 1.15;
+        }
+
+        .detail-section {
+            margin-top: 24px;
+        }
+
+        .detail-section h3 {
+            margin: 0 0 14px;
+            font-size: 20px;
+            letter-spacing: -0.01em;
+        }
+
+        .service-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .service-card {
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .service-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .service-type {
+            font-size: 16px;
+            font-weight: 800;
+            color: #18314b;
+        }
+
+        .service-date {
+            font-size: 13px;
+            color: var(--muted);
+            background: #eef4fb;
+            border-radius: 999px;
+            padding: 6px 10px;
+        }
+
+        .service-meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .service-meta-item {
+            background: #f8fbff;
+            border: 1px solid #e1eaf4;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .service-meta-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .service-meta-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #233345;
+        }
+
+        .service-notes {
+            color: #516173;
+            line-height: 1.55;
+            font-size: 14px;
+        }
+
+        .muted-text {
+            color: var(--muted);
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-header {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 780px) {
+            .hero {
+                padding: 24px 22px;
+            }
+
+            .hero h1 {
+                font-size: 34px;
+            }
+
+            .field-row,
+            .stats-grid,
+            .service-meta {
+                grid-template-columns: 1fr;
+            }
+
+            #car_result {
+                padding: 18px;
+            }
+
+            .result-title h2 {
+                font-size: 26px;
+            }
         }
     </style>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='app_scripts.js') }}" defer></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to CarKeeper!</h1>
-        <p>Please enter the desired Car ID</p>
+    <div class="page-shell">
+        <section class="hero">
+            <h1>CarKeeper</h1>
+            <p>
+                Track mileage, maintenance, and vehicle spending in one clean dashboard.
+                Look up a car, add a vehicle, and log service records without digging through cluttered menus.
+            </p>
+        </section>
 
-        <!-- Input field for user to enter car ID -->
-        <input id="entered_car_id" type="text"/> 
+        <div class="dashboard-grid">
+            <div class="left-column">
+                <section class="card">
+                    <div class="card-header">
+                        <h2>Find a Car</h2>
+                        <p>Search by car ID to view summary details and service history.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="field-group">
+                                <label for="entered_car_id">Car ID</label>
+                                <input id="entered_car_id" type="text" placeholder="Enter car ID" />
+                            </div>
+                            <button id="enter_btn" class="btn btn-primary" type="button">View Car</button>
+                        </div>
+                    </div>
+                </section>
 
-        <!-- Button used to submit entered car ID -->
-        <button id="enter_btn" type="button">Enter</button>
+                <section class="card">
+                    <div class="card-header">
+                        <h2>Add New Car</h2>
+                        <p>Create a vehicle profile with the essential details.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label for="make">Make</label>
+                                    <input id="make" type="text" placeholder="Honda" />
+                                </div>
+                                <div class="field-group">
+                                    <label for="model">Model</label>
+                                    <input id="model" type="text" placeholder="Civic" />
+                                </div>
+                            </div>
 
-        <hr>
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label for="year">Year</label>
+                                    <input id="year" type="number" placeholder="2018" />
+                                </div>
+                                <div class="field-group">
+                                    <label for="mileage">Current Mileage</label>
+                                    <input id="mileage" type="number" placeholder="116000" />
+                                </div>
+                            </div>
 
-        <!-- Section to add new car -->
-        <!-- 'placeholder' field refers to "hint" in input box before typing -->
-        <h2>Add New Car</h2>   
-        <input id="make" type="text" placeholder="Make" />
-        <input id="model" type="text" placeholder="Model" />
-        <input id="year" type="number" placeholder="Year" />
-        <input id="mileage" type="number" placeholder="Current Mileage" />
+                            <div class="field-group">
+                                <label for="image_url">Image URL</label>
+                                <input id="image_url" type="text" placeholder="Optional image URL" />
+                            </div>
 
-        <!-- Currently requires user to enter own url for each car -->
-        <input id="image_url" type="text" placeholder="Image URL (optional)" />
+                            <button id="add_car_btn" class="btn btn-primary" type="button">Add Car</button>
+                        </div>
+                    </div>
+                </section>
 
-        <button id="add_car_btn" type="button">Add Car</button>
+                <section class="card">
+                    <div class="card-header">
+                        <h2>Add Service</h2>
+                        <p>Record a completed service event for an existing car.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label for="service_car_id">Car ID</label>
+                                    <input id="service_car_id" type="number" placeholder="1" />
+                                </div>
+                                <div class="field-group">
+                                    <label for="service_date">Service Date</label>
+                                    <input id="service_date" type="text" placeholder="MM/DD/YY" />
+                                </div>
+                            </div>
 
-        <hr>
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label for="service_mileage">Mileage at Service</label>
+                                    <input id="service_mileage" type="number" placeholder="116500" />
+                                </div>
+                                <div class="field-group">
+                                    <label for="service_type">Service Type</label>
+                                    <input id="service_type" type="text" placeholder="Oil Change" />
+                                </div>
+                            </div>
 
-        <!-- Section to add service -->
-        <h2>Add Service</h2>
-        <input id="service_car_id" type="number" placeholder="Car ID" />
-        <input id="service_date" type="text" placeholder="Service Date (MM/DD/YY)" />
-        <input id="service_mileage" type="number" placeholder="Mileage at Service" />
-        <input id="service_type" type="text" placeholder="Service Type" />
-        <input id="service_description" type="text" placeholder="Description (optional)" />
-        <input id="service_notes" type="text" placeholder="Notes (optional)" />
-        <input id="service_cost" type="number" step="0.01" placeholder="Cost (optional)" />
+                            <div class="field-group">
+                                <label for="service_description">Description</label>
+                                <input id="service_description" type="text" placeholder="Optional description" />
+                            </div>
 
-        <button id="add_service_btn" type="button">Add Service</button>
-        <!-- Container to display car search result -->
-        <div id="car_result"></div>
+                            <div class="field-group">
+                                <label for="service_notes">Notes</label>
+                                <input id="service_notes" type="text" placeholder="Optional notes" />
+                            </div>
+
+                            <div class="field-group">
+                                <label for="service_cost">Cost</label>
+                                <input id="service_cost" type="number" step="0.01" placeholder="Optional cost" />
+                            </div>
+
+                            <button id="add_service_btn" class="btn btn-secondary" type="button">Add Service</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-column">
+                <section id="car_result">
+                    <div class="empty-state">
+                        <div class="empty-state-inner">
+                            <div class="empty-state-badge">🚗</div>
+                            <h3>Your car dashboard will appear here</h3>
+                            <p>
+                                Search for a car by ID, add a new vehicle, or log a service entry to see
+                                summary details and history in a cleaner presentation view.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
     </div>
 </body>
 </html>

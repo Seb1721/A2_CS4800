@@ -1,13 +1,14 @@
 $(function () {
     const $inputtedID = $("#entered_car_id");
     const $enterButton = $("#enter_btn");
+
     const $addCarButton = $("#add_car_btn");
     const $make = $("#make");
     const $model = $("#model");
     const $year = $("#year");
     const $mileage = $("#mileage");
     const $imageURL = $("#image_url");
-    // Added
+
     const $addServiceButton = $("#add_service_btn");
     const $serviceCarID = $("#service_car_id");
     const $serviceDate = $("#service_date");
@@ -16,68 +17,153 @@ $(function () {
     const $serviceDescription = $("#service_description");
     const $serviceNotes = $("#service_notes");
     const $serviceCost = $("#service_cost");
-    //
+
     const $out = $("#car_result");
 
-    function renderCarSummary(car) {
-        let html = `
-            <h3>Car Summary</h3>
-            <ul>
-                <li><b>Car ID:</b> ${car["Car ID"]}</li>
-                <li><b>Car Name:</b> ${car["Car Name"]}</li>
-                <li><b>Current Mileage:</b> ${car["Current Mileage"]}</li>
-                <li><b>Last Service Date:</b> ${car["Last Service Date"]}</li>
-                <li><b>Lifetime Expenses:</b> ${car["Lifetime Expenses"]}</li>
-                <li><b>Service Count:</b> ${car["Service Count"]}</li>
-            </ul>
-        `;
+    function formatCurrency(value) {
+        if (value === null || value === undefined || value === "") return "N/A";
+        const num = Number(value);
+        if (Number.isNaN(num)) return value;
+        return `$${num.toFixed(2)}`;
+    }
 
-        if (car["Image URL"]) {
-            html += `
-                <img
-                    src="${car["Image URL"]}"
-                    alt="Image of ${car["Car Name"]}"
-                    style="max-width: 300px; display: block; margin-top: 10px;"
-                >
-            `;
-        }
-
-        const history = car["Service History"] || [];
-
-        html += `<h3 style="margin-top: 24px;">Service History</h3>`;
-
-        if (history.length === 0) {
-            html += `<p>No service history recorded yet.</p>`;
-        } else {
-            html += `<ul>`;
-            history.forEach(service => {
-                html += `
-                    <li style="margin-bottom: 14px;">
-                        <b>${service["Date"]}</b> — ${service["Service Type"]} at ${service["Mileage"]} miles
-                        <br>
-                        <b>Description:</b> ${service["Description"] || "N/A"}
-                        <br>
-                        <b>Notes:</b> ${service["Notes"] || "N/A"}
-                        <br>
-                        <b>Cost:</b> ${service["Cost"] !== null && service["Cost"] !== undefined ? `$${service["Cost"]}` : "N/A"}
-                    </li>
-                `;
-            });
-            html += `</ul>`;
-        }
-
-        $out.html(html);
+    function renderMessage(type, msg) {
+        $out.html(`
+            <div class="status-card ${type}">
+                ${msg}
+            </div>
+        `);
     }
 
     function renderError(msg) {
-        $out.html(`<p style="color:red;"><b>${msg}</b></p>`);
+        $out.html(`
+            <div class="status-card error">
+                ${msg}
+            </div>
+            <div class="empty-state" style="min-height: 280px;">
+                <div class="empty-state-inner">
+                    <div class="empty-state-badge">!</div>
+                    <h3>We couldn’t complete that action</h3>
+                    <p>${msg}</p>
+                </div>
+            </div>
+        `);
+    }
+
+    function renderCarSummary(car, successMessage = "") {
+        const history = car["Service History"] || [];
+        const hasImage = Boolean(car["Image URL"]);
+
+        let html = "";
+
+        if (successMessage) {
+            html += `<div class="status-card success">${successMessage}</div>`;
+        }
+
+        html += `
+            <div class="result-header">
+                <div class="result-title">
+                    <h2>${car["Car Name"]}</h2>
+                    <p class="result-subtitle">
+                        Vehicle overview, maintenance activity, and cost tracking in one place.
+                    </p>
+                </div>
+                ${hasImage ? `
+                    <div class="car-image-wrap">
+                        <img src="${car["Image URL"]}" alt="Image of ${car["Car Name"]}">
+                    </div>
+                ` : ""}
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Car ID</div>
+                    <div class="stat-value">${car["Car ID"]}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Current Mileage</div>
+                    <div class="stat-value">${car["Current Mileage"]}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Last Service</div>
+                    <div class="stat-value">${car["Last Service Date"]}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Lifetime Expenses</div>
+                    <div class="stat-value">${formatCurrency(car["Lifetime Expenses"])}</div>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <div class="stat-card">
+                    <div class="stat-label">Service Count</div>
+                    <div class="stat-value">${car["Service Count"]}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value" style="font-size: 18px;">Tracked Vehicle</div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>Service History</h3>
+        `;
+
+        if (history.length === 0) {
+            html += `
+                <div class="service-card">
+                    <div class="service-notes muted-text">
+                        No service history has been recorded for this car yet.
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `<div class="service-list">`;
+
+            history.forEach(service => {
+                html += `
+                    <div class="service-card">
+                        <div class="service-top">
+                            <div class="service-type">${service["Service Type"] || "Service Entry"}</div>
+                            <div class="service-date">${service["Date"] || "N/A"}</div>
+                        </div>
+
+                        <div class="service-meta">
+                            <div class="service-meta-item">
+                                <div class="service-meta-label">Mileage</div>
+                                <div class="service-meta-value">${service["Mileage"] ?? "N/A"}</div>
+                            </div>
+                            <div class="service-meta-item">
+                                <div class="service-meta-label">Cost</div>
+                                <div class="service-meta-value">${formatCurrency(service["Cost"])}</div>
+                            </div>
+                            <div class="service-meta-item">
+                                <div class="service-meta-label">Service ID</div>
+                                <div class="service-meta-value">${service["Service ID"] ?? "N/A"}</div>
+                            </div>
+                        </div>
+
+                        <div class="service-notes">
+                            <div><strong>Description:</strong> ${service["Description"] || "N/A"}</div>
+                            <div style="margin-top: 6px;"><strong>Notes:</strong> ${service["Notes"] || "N/A"}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        }
+
+        html += `</div>`;
+
+        $out.html(html);
     }
 
     function lookupCar() {
         const id = $inputtedID.val().trim();
 
         if (!id) {
-            renderError("Enter a car id.");
+            renderError("Enter a car ID.");
             return;
         }
 
@@ -88,15 +174,15 @@ $(function () {
             data: { car_id: id },
 
             success: function (data) {
-                console.log("Request succeeded: car_info?id=" + id);
+                console.log("Request succeeded: /car_info?car_id=" + id);
                 console.log("Response data:", data);
                 renderCarSummary(data);
             },
 
             error: function (xhr) {
-                console.log("Request failed: car_info?id=" + id);
+                console.log("Request failed: /car_info?car_id=" + id);
                 console.log("HTTP status:", xhr.status);
-            
+
                 let msg = "Could not fetch car.";
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     msg = xhr.responseJSON.error;
@@ -109,11 +195,11 @@ $(function () {
     }
 
     function addCar() {
-        const make = $make.val().trim()
-        const model = $model.val().trim()
-        const year = $year.val().trim()
-        const mileage = $mileage.val().trim()
-        const image_url = $imageURL.val().trim()
+        const make = $make.val().trim();
+        const model = $model.val().trim();
+        const year = $year.val().trim();
+        const mileage = $mileage.val().trim();
+        const image_url = $imageURL.val().trim();
 
         if (!make || !model || !year || !mileage) {
             renderError("Make, model, year, and mileage are required.");
@@ -129,17 +215,15 @@ $(function () {
                 make: make,
                 model: model,
                 year: year,
-                mileage: mileage, 
+                mileage: mileage,
                 image_url: image_url
             }),
 
-            // If the request succeeds, run the function and store the returned response into data
-            success: function(data) {
+            success: function (data) {
                 console.log("Car added successfully.");
                 console.log("Response data:", data);
-                renderCarSummary(data);
+                renderCarSummary(data, "Car added successfully.");
 
-                // Clear form inputs
                 $make.val("");
                 $model.val("");
                 $year.val("");
@@ -192,7 +276,7 @@ $(function () {
             success: function (data) {
                 console.log("Service added successfully.");
                 console.log("Response data:", data);
-                renderCarSummary(data);
+                renderCarSummary(data, "Service record added successfully.");
 
                 $serviceCarID.val("");
                 $serviceDate.val("");
@@ -216,12 +300,10 @@ $(function () {
         });
     }
 
-    // Click button interactions
     $enterButton.on("click", lookupCar);
     $addCarButton.on("click", addCar);
     $addServiceButton.on("click", addService);
 
-    // Press Enter on keyboard -> lookup
     $inputtedID.on("keydown", function (e) {
         if (e.key === "Enter") lookupCar();
     });
