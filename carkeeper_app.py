@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
 from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add env variable for MONGODB_URI upon new terminal open
 MONGODB_URI = os.getenv("MONGODB_URI")
