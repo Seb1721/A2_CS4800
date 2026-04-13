@@ -15,7 +15,7 @@ py -m pip install flask
 py -m pip freeze > requirements.txt
 
 # 4) Run the program
-py .\src\car_data.py
+py .\src\app_backend.py
 
 # VS Code: Ctrl+Shift+P → Python: Select Interpreter → .venv\Scripts\python.exe
 
@@ -23,5 +23,14 @@ py .\src\car_data.py
 # Get connection string from MongoDB Compass
 $env:MONGODB_URI="your_mongodb_connection_string_here"
 export MONGODB_URI="your_mongodb_connection_string_here"
+
 # Reactivate venv when entering aws terminal:
 source .venv/bin/activate
+
+AWS
+#Connect to instance
+#Open A2_CS4800 directory
+#Activate venv
+    source .venv/bin/activate
+#Run app 
+    nohup python3.14 app_backend.py > log.txt &
