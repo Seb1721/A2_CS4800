@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { SyntheticEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { CarDetails, CarSummary } from "@/lib/types";
@@ -70,7 +70,7 @@ export function DashboardClient({ initialCars, username }: DashboardClientProps)
     }
   }
 
-  async function handleLookup(event?: FormEvent) {
+  async function handleLookup(event?: SyntheticEvent) {
     event?.preventDefault();
 
     if (!lookupId.trim()) {
@@ -85,7 +85,7 @@ export function DashboardClient({ initialCars, username }: DashboardClientProps)
     }
   }
 
-  async function handleAddCar(event: FormEvent<HTMLFormElement>) {
+  async function handleAddCar(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
@@ -120,7 +120,7 @@ export function DashboardClient({ initialCars, username }: DashboardClientProps)
     }
   }
 
-  async function handleAddService(event: FormEvent<HTMLFormElement>) {
+  async function handleAddService(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 

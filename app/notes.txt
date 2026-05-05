@@ -1,0 +1,1 @@
+# Next.js pages, layouts, and backend API routes
