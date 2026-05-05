@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests/car-insights.test.mjs tests/reporting-core.test.mjs"
+    "test": "node --test tests/car-insights.test.mjs tests/reporting-core.test.mjs tests/cars-core.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
