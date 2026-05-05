@@ -6,6 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
+        - env | grep -e MONGODB_URI -e MONGODB_DB_NAME -e AUTH_SECRET -e CARKEEPER_ADMIN_USER -e CARKEEPER_ADMIN_PASSWORD >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next
