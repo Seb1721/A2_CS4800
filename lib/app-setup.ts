@@ -6,7 +6,10 @@ let setupPromise: Promise<void> | null = null;
 
 export async function ensureAppSetup() {
   if (!setupPromise) {
-    setupPromise = runSetup();
+    setupPromise = runSetup().catch((error) => {
+      setupPromise = null;
+      throw error;
+    });
   }
 
   await setupPromise;

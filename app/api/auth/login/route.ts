@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ensureAppSetup } from "@/lib/app-setup";
 import { createSession, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { isDatabaseUnavailableError } from "@/lib/mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to log in.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: isDatabaseUnavailableError(error) ? 503 : 500 });
   }
 }

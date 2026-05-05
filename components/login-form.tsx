@@ -29,7 +29,15 @@ export function LoginForm() {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.error ?? "Authentication failed.");
+        const serverError = typeof payload.error === "string" ? payload.error : "";
+
+        if (response.status === 503) {
+          throw new Error(
+            "CarKeeper is temporarily unavailable because the database connection is offline. Please try again shortly."
+          );
+        }
+
+        throw new Error(serverError || "Authentication failed.");
       }
 
       router.push("/");

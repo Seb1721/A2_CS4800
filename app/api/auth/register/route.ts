@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ensureAppSetup } from "@/lib/app-setup";
 import { createSession, createUser, setSessionCookie } from "@/lib/auth";
+import { isDatabaseUnavailableError } from "@/lib/mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
       message === "Password must be at least 8 characters." ||
       message === "That username is already taken."
         ? 400
+        : isDatabaseUnavailableError(error)
+          ? 503
         : 500;
 
     return NextResponse.json({ error: message }, { status });
