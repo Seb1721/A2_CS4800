@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { SyntheticEvent, useDeferredValue, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,13 +33,25 @@ import type {
   UserProfile
 } from "@/lib/types";
 
+type DashboardView =
+  | "dashboard"
+  | "garage"
+  | "new-vehicle"
+  | "vehicle"
+  | "vehicle-insights"
+  | "services"
+  | "account";
+
 type DashboardClientProps = {
   attentionItems: AttentionItem[];
   initialCars: CarSummary[];
+  initialSelectedCar?: CarDetails | null;
   overview: DashboardOverview;
   profile: UserProfile | null;
   recentServices: DashboardRecentService[];
+  serviceFeed?: DashboardRecentService[];
   username: string;
+  view?: DashboardView;
 };
 
 type ReminderRuleForm = {
@@ -139,10 +152,13 @@ const serviceSortOptions = [
 export function DashboardClient({
   attentionItems: initialAttentionItems,
   initialCars,
+  initialSelectedCar = null,
   overview: initialOverview,
   profile: initialProfile,
   recentServices: initialRecentServices,
-  username
+  serviceFeed,
+  username,
+  view = "dashboard"
 }: DashboardClientProps) {
   const router = useRouter();
   const [cars, setCars] = useState(initialCars);
@@ -150,7 +166,7 @@ export function DashboardClient({
   const [recentServices, setRecentServices] = useState(initialRecentServices);
   const [attentionItems, setAttentionItems] = useState(initialAttentionItems);
   const [profile, setProfile] = useState(initialProfile);
-  const [selectedCar, setSelectedCar] = useState<CarDetails | null>(null);
+  const [selectedCar, setSelectedCar] = useState<CarDetails | null>(initialSelectedCar);
   const [lookupId, setLookupId] = useState("");
   const [carForm, setCarForm] = useState(emptyCarForm);
   const [editCarForm, setEditCarForm] = useState(emptyEditCarForm);
@@ -211,6 +227,15 @@ export function DashboardClient({
       email: initialProfile?.email ?? ""
     });
   }, [initialProfile]);
+
+  useEffect(() => {
+    if (initialSelectedCar) {
+      syncSelectedCar(initialSelectedCar);
+      return;
+    }
+
+    setSelectedCar(null);
+  }, [initialSelectedCar]);
 
   useEffect(() => {
     setTrendDateFrom("");
@@ -399,6 +424,18 @@ export function DashboardClient({
     router.refresh();
   }
 
+  function openGarage() {
+    router.push("/garage");
+  }
+
+  function openVehiclePage(carId: number) {
+    router.push(`/garage/${carId}`);
+  }
+
+  function openVehicleInsightsPage(carId: number) {
+    router.push(`/garage/${carId}/insights`);
+  }
+
   function primeServiceForm(car: Pick<CarDetails, "carId" | "currentMileage">, serviceType?: string) {
     setServiceForm({
       ...emptyServiceForm,
@@ -551,6 +588,11 @@ export function DashboardClient({
       syncSelectedCar(createdCar);
       await refreshCars();
       await refreshServerData();
+      if (view === "new-vehicle") {
+        router.push(`/garage/${createdCar.carId}`);
+        return;
+      }
+
       setMessage({ type: "success", text: "Vehicle created and added to your garage." });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not add car." });
@@ -630,6 +672,11 @@ export function DashboardClient({
       syncSelectedCar(null);
       await refreshCars();
       await refreshServerData();
+      if (view === "vehicle" || view === "vehicle-insights") {
+        router.push("/garage");
+        return;
+      }
+
       setMessage({ type: "success", text: "Vehicle deleted." });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not delete vehicle." });
@@ -986,111 +1033,205 @@ export function DashboardClient({
   const fleetHighlights = getFleetHighlights(cars);
   const overdueAttentionItems = attentionItems.filter((item) => item.status === "overdue");
   const dueSoonAttentionItems = attentionItems.filter((item) => item.status === "due-soon");
+  const serviceFeedRows = serviceFeed ?? recentServices;
+  const pageMeta = getPageMeta(view, selectedCar);
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div className="top-bar">
-          <div>
-            <h1>CarKeeper</h1>
-            <p>
-              Track your garage with cleaner workflows for vehicle records, mileage updates,
-              service expenses, and maintenance attention items.
-            </p>
-            <div className="hero-meta">
-              <div className="meta-chip">{overview.totalVehicles} vehicles tracked</div>
-              <div className="meta-chip">{overview.totalServiceRecords} services recorded</div>
-              <div className="meta-chip">{attentionItems.length} active maintenance reminders</div>
-            </div>
-          </div>
+    <main className="workspace-shell">
+      <header className="workspace-header">
+        <div className="workspace-header-copy">
+          <div className="workspace-kicker">CarKeeper</div>
+          <h1>{pageMeta.title}</h1>
+          <p>{pageMeta.description}</p>
+        </div>
 
-          <div className="account-panel">
-            <div className="signed-in-card">
-              <span className="signed-in-label">Signed in as</span>
-              <span className="signed-in-name">{profile?.displayName || username}</span>
-              <span className="signed-in-subline">@{username}</span>
-              <span className="signed-in-subline">{profile?.email || "Add an email to complete your profile"}</span>
-            </div>
-            <button className="btn btn-ghost" disabled={isLoggingOut} onClick={handleLogout} type="button">
+        <div className="workspace-header-side">
+          <div className="workspace-user">
+            <strong>{profile?.displayName || username}</strong>
+            <span>@{username}</span>
+            <span>{profile?.email || "No email saved"}</span>
+          </div>
+          <div className="workspace-actions">
+            {view !== "new-vehicle" ? (
+              <Link className="btn btn-primary" href="/garage/new">
+                Add Vehicle
+              </Link>
+            ) : null}
+            {selectedCar && view === "vehicle" ? (
+              <button className="btn btn-secondary" onClick={() => openVehicleInsightsPage(selectedCar.carId)} type="button">
+                Open Insights
+              </button>
+            ) : null}
+            {selectedCar && view === "vehicle-insights" ? (
+              <button className="btn btn-secondary" onClick={() => openVehiclePage(selectedCar.carId)} type="button">
+                Open Records
+              </button>
+            ) : null}
+            <button className="btn btn-secondary" disabled={isLoggingOut} onClick={handleLogout} type="button">
               {isLoggingOut ? "Signing out..." : "Log Out"}
             </button>
           </div>
         </div>
-      </section>
+      </header>
 
-      <section className="overview-grid">
+      <nav className="workspace-nav">
+        <Link className={`workspace-nav-link ${view === "dashboard" ? "active" : ""}`} href="/">
+          Dashboard
+        </Link>
+        <Link className={`workspace-nav-link ${view === "garage" || view === "new-vehicle" || view === "vehicle" || view === "vehicle-insights" ? "active" : ""}`} href="/garage">
+          Garage
+        </Link>
+        <Link className={`workspace-nav-link ${view === "services" ? "active" : ""}`} href="/services">
+          Services
+        </Link>
+        <Link className={`workspace-nav-link ${view === "account" ? "active" : ""}`} href="/account">
+          Account
+        </Link>
+      </nav>
+
+      {message ? <div className={`status-card ${message.type}`}>{message.text}</div> : null}
+
+      {view === "dashboard" ? (
+        <DashboardHomeView
+          attentionItems={attentionItems}
+          cars={cars}
+          dueSoonAttentionItems={dueSoonAttentionItems}
+          fleetHighlights={fleetHighlights}
+          openVehiclePage={openVehiclePage}
+          overdueAttentionItems={overdueAttentionItems}
+          overview={overview}
+          recentServices={recentServices}
+        />
+      ) : null}
+
+      {view === "garage" ? (
+        <GarageIndexView
+          attentionItems={attentionItems}
+          cars={cars}
+          openVehicleInsightsPage={openVehicleInsightsPage}
+          openVehiclePage={openVehiclePage}
+          overview={overview}
+        />
+      ) : null}
+
+      {view === "new-vehicle" ? (
+        <VehicleCreateView
+          carForm={carForm}
+          handleAddCar={handleAddCar}
+          onAddRule={addReminderRule}
+          onRemoveRule={removeReminderRule}
+          onUpdateCarField={updateCarField}
+          onUpdateRule={updateReminderRuleField}
+        />
+      ) : null}
+
+      {view === "services" ? (
+        <ServicesIndexView openVehiclePage={openVehiclePage} services={serviceFeedRows} />
+      ) : null}
+
+      {view === "account" ? (
+        <AccountWorkspaceView
+          handleSaveProfile={handleSaveProfile}
+          isSavingProfile={isSavingProfile}
+          profile={profile}
+          profileForm={profileForm}
+          updateProfileField={updateProfileField}
+          username={username}
+        />
+      ) : null}
+
+      {view === "vehicle" ? (
+        <VehicleWorkspaceView
+          car={selectedCar}
+          cancelEditingMileageEntry={cancelEditingMileageEntry}
+          cancelEditingService={cancelEditingService}
+          deletingMileageEntryId={deletingMileageEntryId}
+          deletingServiceId={deletingServiceId}
+          editCarForm={editCarForm}
+          editMileageEntryForm={editMileageEntryForm}
+          editServiceForm={editServiceForm}
+          editingMileageEntryId={editingMileageEntryId}
+          editingServiceId={editingServiceId}
+          handleDeleteMileageEntry={handleDeleteMileageEntry}
+          handleDeleteService={handleDeleteService}
+          handleReminderAction={handleReminderAction}
+          handleSaveMileageEntryEdit={handleSaveMileageEntryEdit}
+          handleSaveServiceEdit={handleSaveServiceEdit}
+          handleSaveVehicle={handleSaveVehicle}
+          handleUpdateMileage={handleUpdateMileage}
+          handleAddService={handleAddService}
+          handleDeleteVehicle={handleDeleteVehicle}
+          isDeletingVehicle={isDeletingVehicle}
+          isSavingMileageEntry={isSavingMileageEntry}
+          isSavingService={isSavingService}
+          isSavingVehicle={isSavingVehicle}
+          mileageForm={mileageForm}
+          openVehicleInsightsPage={openVehicleInsightsPage}
+          serviceForm={serviceForm}
+          startEditingMileageEntry={startEditingMileageEntry}
+          startEditingService={startEditingService}
+          updateEditCarField={updateEditCarField}
+          updateEditMileageEntryField={updateEditMileageEntryField}
+          updateEditServiceField={updateEditServiceField}
+          updateMileageField={updateMileageField}
+          updateServiceField={updateServiceField}
+          onAddRule={addReminderRule}
+          onRemoveRule={removeReminderRule}
+          onUpdateRule={updateReminderRuleField}
+        />
+      ) : null}
+
+      {view === "vehicle-insights" ? (
+        <VehicleInsightsView
+          car={selectedCar}
+          serviceTypeOptions={serviceTypeOptions}
+          setTrendDateFrom={setTrendDateFrom}
+          setTrendDateTo={setTrendDateTo}
+          setTrendServiceTypeFilter={setTrendServiceTypeFilter}
+          trendAverageMonthlyExpense={trendAverageMonthlyExpense}
+          trendAverageMonthlyMileage={trendAverageMonthlyMileage}
+          trendAverageMonthlyServiceFrequency={trendAverageMonthlyServiceFrequency}
+          trendCategoryExpenses={trendCategoryExpenses}
+          trendDateFrom={trendDateFrom}
+          trendDateTo={trendDateTo}
+          trendExpensePoints={trendExpensePoints}
+          trendMilesDriven={trendMilesDriven}
+          trendMileagePoints={trendMileagePoints}
+          trendServiceTypeFilter={trendServiceTypeFilter}
+        />
+      ) : null}
+    </main>
+  );
+}
+
+function DashboardHomeView({
+  attentionItems,
+  cars,
+  dueSoonAttentionItems,
+  fleetHighlights,
+  openVehiclePage,
+  overdueAttentionItems,
+  overview,
+  recentServices
+}: {
+  attentionItems: AttentionItem[];
+  cars: CarSummary[];
+  dueSoonAttentionItems: AttentionItem[];
+  fleetHighlights: ReturnType<typeof getFleetHighlights>;
+  openVehiclePage: (carId: number) => void;
+  overdueAttentionItems: AttentionItem[];
+  overview: DashboardOverview;
+  recentServices: DashboardRecentService[];
+}) {
+  return (
+    <div className="content-stack">
+      <section className="overview-grid compact-shell">
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
         <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
         <OverviewCard label="Lifetime Expenses" value={formatCurrency(overview.totalExpenses)} />
-        <OverviewCard label="Overdue Reminders" value={String(overview.overdueCount)} />
-        <OverviewCard
-          label="Due Soon"
-          value={overview.dueSoonCount ? `${overview.dueSoonCount} due` : "All clear"}
-        />
+        <OverviewCard label="Overdue" value={String(overview.overdueCount)} />
+        <OverviewCard label="Due Soon" value={String(overview.dueSoonCount)} />
         <OverviewCard label="Flagged Vehicles" value={String(overview.flaggedVehicleCount)} />
-      </section>
-
-      <section className="card comparison-card">
-        <div className="card-header">
-          <h2>Fleet Comparison</h2>
-          <p>Compare mileage, maintenance load, and cost across every vehicle in your garage.</p>
-        </div>
-        <div className="card-body">
-          {cars.length === 0 ? (
-            <div className="inventory-empty">Add vehicles to unlock comparison insights.</div>
-          ) : (
-            <div className="comparison-table-wrap">
-              <table className="comparison-table">
-                <thead>
-                  <tr>
-                    <th>Vehicle</th>
-                    <th>Mileage</th>
-                    <th>Services</th>
-                    <th>Lifetime Cost</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...cars]
-                    .sort((left, right) => right.lifetimeExpenses - left.lifetimeExpenses || right.currentMileage - left.currentMileage)
-                    .map((car) => {
-                      const reminder = attentionItems.find((item) => item.carId === car.carId);
-
-                      return (
-                        <tr key={car.carId}>
-                          <td>
-                            <button
-                              className="comparison-link"
-                              onClick={() => void fetchCar(car.carId)}
-                              type="button"
-                            >
-                              {car.carName}
-                            </button>
-                          </td>
-                          <td>{car.currentMileage.toLocaleString()} mi</td>
-                          <td>{car.serviceCount}</td>
-                          <td>{formatCurrency(car.lifetimeExpenses)}</td>
-                          <td>
-                            {reminder ? (
-                              <span
-                                className={`comparison-status ${
-                                  reminder.status === "overdue" ? "warning" : "due-soon"
-                                }`}
-                              >
-                                {reminder.serviceType}: {reminder.status === "overdue" ? "Overdue" : "Due soon"}
-                              </span>
-                            ) : (
-                              <span className="comparison-status ok">On schedule</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </section>
 
       <section className="fleet-highlights">
@@ -1099,7 +1240,7 @@ export function DashboardClient({
           subtitle={
             fleetHighlights.highestMileageVehicle
               ? `${fleetHighlights.highestMileageVehicle.currentMileage.toLocaleString()} mi`
-              : "No vehicles yet"
+              : "No vehicles tracked"
           }
           title={fleetHighlights.highestMileageVehicle?.carName ?? "No vehicle available"}
         />
@@ -1108,7 +1249,7 @@ export function DashboardClient({
           subtitle={
             fleetHighlights.highestSpendVehicle
               ? formatCurrency(fleetHighlights.highestSpendVehicle.lifetimeExpenses)
-              : "No vehicles yet"
+              : "No spending yet"
           }
           title={fleetHighlights.highestSpendVehicle?.carName ?? "No vehicle available"}
         />
@@ -1117,760 +1258,1242 @@ export function DashboardClient({
           subtitle={
             fleetHighlights.mostServicedVehicle
               ? `${fleetHighlights.mostServicedVehicle.serviceCount} records`
-              : "No vehicles yet"
+              : "No service history"
           }
           title={fleetHighlights.mostServicedVehicle?.carName ?? "No vehicle available"}
         />
       </section>
 
-      <div className="dashboard-grid">
-        <div className="left-column">
-          <section className="card">
-            <div className="card-header">
-              <h2>Account Profile</h2>
-              <p>Keep your display name and contact email current for a more complete account record.</p>
+      <div className="dashboard-panels">
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Garage</h2>
+              <p>Your current fleet at a glance.</p>
             </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleSaveProfile}>
-                <div className="field-group">
-                  <label htmlFor="profileDisplayName">Display Name</label>
-                  <input
-                    id="profileDisplayName"
-                    onChange={(event) => updateProfileField("displayName", event.target.value)}
-                    required
-                    type="text"
-                    value={profileForm.displayName}
-                  />
-                </div>
+            <Link className="section-link" href="/garage">
+              Open Garage
+            </Link>
+          </div>
+          {cars.length === 0 ? (
+            <div className="empty-inline">No vehicles yet. Add your first vehicle to start tracking.</div>
+          ) : (
+            <table className="workspace-table">
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Mileage</th>
+                  <th>Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cars.slice(0, 5).map((car) => (
+                  <tr key={car.carId}>
+                    <td>
+                      <button className="comparison-link" onClick={() => openVehiclePage(car.carId)} type="button">
+                        {car.carName}
+                      </button>
+                    </td>
+                    <td>{car.currentMileage.toLocaleString()} mi</td>
+                    <td>{formatCurrency(car.lifetimeExpenses)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
-                <div className="field-group">
-                  <label htmlFor="profileEmail">Email</label>
-                  <input
-                    id="profileEmail"
-                    onChange={(event) => updateProfileField("email", event.target.value)}
-                    required
-                    type="email"
-                    value={profileForm.email}
-                  />
-                </div>
-
-                <div className="profile-meta">
-                  <span>Username: @{username}</span>
-                  <span>User ID: {profile?.id ?? "Pending profile load"}</span>
-                </div>
-
-                <button className="btn btn-secondary" disabled={isSavingProfile} type="submit">
-                  {isSavingProfile ? "Saving..." : "Save Profile"}
-                </button>
-              </form>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <h2>Reporting</h2>
-              <p>Filter service activity by vehicle and date range, then export the same dataset as CSV.</p>
-            </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleLoadReport}>
-                <div className="field-group">
-                  <label htmlFor="reportCarId">Vehicle Scope</label>
-                  <select
-                    id="reportCarId"
-                    onChange={(event) => updateReportFilter("carId", event.target.value)}
-                    value={reportFilters.carId}
-                  >
-                    <option value="">All vehicles</option>
-                    {cars.map((car) => (
-                      <option key={car.carId} value={car.carId}>
-                        {car.carName} (ID {car.carId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="reportDateFrom">From Date</label>
-                    <input
-                      id="reportDateFrom"
-                      onChange={(event) => updateReportFilter("dateFrom", event.target.value)}
-                      type="date"
-                      value={reportFilters.dateFrom}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="reportDateTo">To Date</label>
-                    <input
-                      id="reportDateTo"
-                      onChange={(event) => updateReportFilter("dateTo", event.target.value)}
-                      type="date"
-                      value={reportFilters.dateTo}
-                    />
-                  </div>
-                </div>
-
-                <div className="action-row">
-                  <button className="btn btn-secondary" disabled={isLoadingReport} type="submit">
-                    {isLoadingReport ? "Loading..." : "Run Report"}
-                  </button>
-                  <button className="btn btn-ghost" onClick={handleResetReport} type="button">
-                    Clear Filters
-                  </button>
-                  <button
-                    className="btn btn-inline"
-                    disabled={isExportingReport || isLoadingReport}
-                    onClick={() => void handleExportReport()}
-                    type="button"
-                  >
-                    {isExportingReport ? "Exporting..." : "Export CSV"}
-                  </button>
-                </div>
-              </form>
-
-              {reportSummary ? (
-                <div className="report-stack">
-                  <div className="stats-grid compact report-grid">
-                    <div className="stat-card">
-                      <div className="stat-label">Vehicles In Scope</div>
-                      <div className="stat-value">{reportSummary.vehiclesInScope}</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-label">Service Records</div>
-                      <div className="stat-value">{reportSummary.serviceCount}</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-label">Total Expenses</div>
-                      <div className="stat-value">{formatCurrency(reportSummary.totalExpenses)}</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-label">Average Service Cost</div>
-                      <div className="stat-value">{formatCurrency(reportSummary.averageServiceCost)}</div>
-                    </div>
-                  </div>
-
-                  <div className="category-section">
-                    <h4>Top Cost Categories</h4>
-                    {reportSummary.servicesByCategory.length === 0 ? (
-                      <div className="service-card">
-                        <div className="service-notes muted-text">No service records match the current report filters.</div>
-                      </div>
-                    ) : (
-                      <div className="category-list">
-                        {reportSummary.servicesByCategory.slice(0, 4).map((item) => (
-                          <CategoryExpenseCard item={item} key={item.category} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="category-section">
-                    <h4>Highest Cost Service</h4>
-                    {reportSummary.highestCostService ? (
-                      <div className="service-card">
-                        <div className="service-top">
-                          <div className="service-type">{reportSummary.highestCostService.serviceType}</div>
-                          <div className="service-date">{reportSummary.highestCostService.date}</div>
-                        </div>
-                        <div className="service-notes">
-                          <div>{reportSummary.highestCostService.carName}</div>
-                          <div className="service-notes-row">
-                            {formatCurrency(reportSummary.highestCostService.cost)} at{" "}
-                            {reportSummary.highestCostService.mileage.toLocaleString()} mi
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="service-card">
-                        <div className="service-notes muted-text">No priced services match the current report filters.</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="category-section">
-                    <h4>Report Rows</h4>
-                    {reportSummary.services.length === 0 ? (
-                      <div className="service-card">
-                        <div className="service-notes muted-text">Run a wider date range or choose another vehicle to see report rows.</div>
-                      </div>
-                    ) : (
-                      <div className="report-table-wrap">
-                        <table className="comparison-table report-table">
-                          <thead>
-                            <tr>
-                              <th>Date</th>
-                              <th>Vehicle</th>
-                              <th>Category</th>
-                              <th>Mileage</th>
-                              <th>Cost</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {reportSummary.services.slice(0, 8).map((service) => (
-                              <tr key={`${service.carId}-${service.serviceId}`}>
-                                <td>{service.date}</td>
-                                <td>{service.carName}</td>
-                                <td>{service.serviceType}</td>
-                                <td>{service.mileage.toLocaleString()} mi</td>
-                                <td>{formatCurrency(service.cost)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <h2>Find a Vehicle</h2>
-              <p>Open any vehicle record by ID or choose one from your garage.</p>
-            </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleLookup}>
-                <div className="field-group">
-                  <label htmlFor="lookupId">Car ID</label>
-                  <input
-                    id="lookupId"
-                    onChange={(event) => setLookupId(event.target.value)}
-                    placeholder="Enter car ID"
-                    type="text"
-                    value={lookupId}
-                  />
-                </div>
-                <button className="btn btn-primary" type="submit">
-                  View Vehicle
-                </button>
-              </form>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <h2>Add Vehicle</h2>
-              <p>Create a new vehicle profile with its opening mileage.</p>
-            </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleAddCar}>
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="make">Make</label>
-                    <input
-                      id="make"
-                      onChange={(event) => updateCarField("make", event.target.value)}
-                      placeholder="Honda"
-                      required
-                      type="text"
-                      value={carForm.make}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="model">Model</label>
-                    <input
-                      id="model"
-                      onChange={(event) => updateCarField("model", event.target.value)}
-                      placeholder="Civic"
-                      required
-                      type="text"
-                      value={carForm.model}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="year">Year</label>
-                    <input
-                      id="year"
-                      min="1900"
-                      onChange={(event) => updateCarField("year", event.target.value)}
-                      placeholder="2018"
-                      required
-                      type="number"
-                      value={carForm.year}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="mileage">Current Mileage</label>
-                    <input
-                      id="mileage"
-                      min="0"
-                      onChange={(event) => updateCarField("mileage", event.target.value)}
-                      placeholder="116000"
-                      required
-                      type="number"
-                      value={carForm.mileage}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="imageUrl">Image URL</label>
-                  <input
-                    id="imageUrl"
-                    onChange={(event) => updateCarField("imageUrl", event.target.value)}
-                    placeholder="Optional image URL"
-                    type="text"
-                    value={carForm.imageUrl}
-                  />
-                </div>
-
-                <ReminderRuleEditor
-                  mode="create"
-                  onAddRule={addReminderRule}
-                  onRemoveRule={removeReminderRule}
-                  onUpdateRule={updateReminderRuleField}
-                  rules={carForm.serviceReminderRules}
-                />
-
-                <button className="btn btn-primary" type="submit">
-                  Add Vehicle
-                </button>
-              </form>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <h2>Update Mileage</h2>
-              <p>Record mileage changes without editing the whole vehicle profile.</p>
-            </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleUpdateMileage}>
-                <div className="field-group">
-                  <label htmlFor="mileageCarId">Vehicle</label>
-                  <select
-                    id="mileageCarId"
-                    onChange={(event) => updateMileageField("carId", event.target.value)}
-                    value={mileageForm.carId}
-                  >
-                    <option value="">Select a vehicle</option>
-                    {cars.map((car) => (
-                      <option key={car.carId} value={car.carId}>
-                        {car.carName} (ID {car.carId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="mileageDate">Entry Date</label>
-                    <input
-                      id="mileageDate"
-                      onChange={(event) => updateMileageField("date", event.target.value)}
-                      type="date"
-                      value={mileageForm.date}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="mileageValue">Mileage</label>
-                    <input
-                      id="mileageValue"
-                      min="0"
-                      onChange={(event) => updateMileageField("mileage", event.target.value)}
-                      required
-                      type="number"
-                      value={mileageForm.mileage}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="mileageNotes">Notes</label>
-                  <textarea
-                    id="mileageNotes"
-                    onChange={(event) => updateMileageField("notes", event.target.value)}
-                    placeholder="Optional context for this mileage entry"
-                    rows={3}
-                    value={mileageForm.notes}
-                  />
-                </div>
-
-                <label className="checkbox-row">
-                  <input
-                    checked={mileageForm.allowCorrection}
-                    onChange={(event) => updateMileageField("allowCorrection", event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>Allow a lower mileage if this entry is a correction.</span>
-                </label>
-
-                <button className="btn btn-secondary" type="submit">
-                  Save Mileage Entry
-                </button>
-              </form>
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <h2>Add Service</h2>
-              <p>Record the service date, mileage, category, notes, and expense.</p>
-            </div>
-            <div className="card-body">
-              <form className="form-grid" onSubmit={handleAddService}>
-                <div className="field-group">
-                  <label htmlFor="serviceCarId">Vehicle</label>
-                  <select
-                    id="serviceCarId"
-                    onChange={(event) => updateServiceField("carId", event.target.value)}
-                    required
-                    value={serviceForm.carId}
-                  >
-                    <option value="">Select a vehicle</option>
-                    {cars.map((car) => (
-                      <option key={car.carId} value={car.carId}>
-                        {car.carName} (ID {car.carId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="serviceDate">Service Date</label>
-                    <input
-                      id="serviceDate"
-                      onChange={(event) => updateServiceField("serviceDate", event.target.value)}
-                      required
-                      type="date"
-                      value={serviceForm.serviceDate}
-                    />
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="serviceMileage">Mileage at Service</label>
-                    <input
-                      id="serviceMileage"
-                      min="0"
-                      onChange={(event) => updateServiceField("mileage", event.target.value)}
-                      required
-                      type="number"
-                      value={serviceForm.mileage}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label htmlFor="serviceType">Service Type</label>
-                    <select
-                      id="serviceType"
-                      onChange={(event) => updateServiceField("serviceType", event.target.value)}
-                      value={serviceForm.serviceType}
-                    >
-                      {serviceTypes.map((serviceType) => (
-                        <option key={serviceType} value={serviceType}>
-                          {serviceType}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="serviceCost">Cost</label>
-                    <input
-                      id="serviceCost"
-                      min="0"
-                      onChange={(event) => updateServiceField("cost", event.target.value)}
-                      placeholder="Optional cost"
-                      step="0.01"
-                      type="number"
-                      value={serviceForm.cost}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="serviceDescription">Description</label>
-                  <input
-                    id="serviceDescription"
-                    onChange={(event) => updateServiceField("description", event.target.value)}
-                    placeholder="Short description of the work performed"
-                    type="text"
-                    value={serviceForm.description}
-                  />
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="serviceNotes">Notes</label>
-                  <textarea
-                    id="serviceNotes"
-                    onChange={(event) => updateServiceField("notes", event.target.value)}
-                    placeholder="Optional service notes"
-                    rows={3}
-                    value={serviceForm.notes}
-                  />
-                </div>
-
-                <button className="btn btn-secondary" type="submit">
-                  Add Service Record
-                </button>
-              </form>
-            </div>
-          </section>
-        </div>
-
-        <div className="right-column">
-          <section className="card inventory-card">
-            <div className="card-header">
-              <h2>Your Garage</h2>
-              <p>Every vehicle below belongs to the signed-in account.</p>
-            </div>
-            <div className="card-body inventory-list">
-              {cars.length === 0 ? (
-                <div className="inventory-empty">No vehicles yet. Add your first one to get started.</div>
-              ) : (
-                cars.map((car) => (
-                  <button
-                    className={`inventory-item ${selectedCar?.carId === car.carId ? "active" : ""}`}
-                    key={car.carId}
-                    onClick={() => void fetchCar(car.carId)}
-                    type="button"
-                  >
-                    <div className="inventory-item-title">{car.carName}</div>
-                    <div className="inventory-item-meta">
-                      <span>ID {car.carId}</span>
-                      <span>{car.currentMileage.toLocaleString()} mi</span>
-                      <span>{formatCurrency(car.lifetimeExpenses)}</span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
               <h2>Maintenance Watch</h2>
-              <p>Grouped reminder actions based on each vehicle&apos;s configured service categories.</p>
+              <p>Vehicles needing attention now.</p>
             </div>
-            <div className="card-body panel-list">
-              {attentionItems.length === 0 ? (
-                <div className="inventory-empty">No vehicles are currently flagged for service attention.</div>
-              ) : (
-                <>
-                  <ReminderWatchGroup
-                    emptyLabel="No overdue reminders right now."
-                    items={overdueAttentionItems}
-                    label="Overdue"
-                    onLogService={handleReminderAction}
-                    onOpenCar={fetchCar}
-                  />
-                  <ReminderWatchGroup
-                    emptyLabel="No due-soon reminders right now."
-                    items={dueSoonAttentionItems}
-                    label="Due Soon"
-                    onLogService={handleReminderAction}
-                    onOpenCar={fetchCar}
-                  />
-                </>
-              )}
+          </div>
+          {attentionItems.length === 0 ? (
+            <div className="empty-inline">Everything is currently on schedule.</div>
+          ) : (
+            <div className="watch-preview-list">
+              {[...overdueAttentionItems, ...dueSoonAttentionItems].slice(0, 6).map((item) => (
+                <button
+                  className="preview-row"
+                  key={`${item.carId}-${item.serviceType}`}
+                  onClick={() => openVehiclePage(item.carId)}
+                  type="button"
+                >
+                  <span className="preview-main">
+                    {item.carName} · {item.serviceType}
+                  </span>
+                  <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
+                    {item.status === "overdue" ? "Overdue" : "Due Soon"}
+                  </span>
+                </button>
+              ))}
             </div>
-          </section>
+          )}
+        </section>
 
-          <section className="card">
-            <div className="card-header">
-              <h2>Recent Service Activity</h2>
-              <p>The latest maintenance work across your garage.</p>
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Recent Service</h2>
+              <p>Latest work logged across your garage.</p>
             </div>
-            <div className="card-body panel-list">
-              {recentServices.length === 0 ? (
-                <div className="inventory-empty">Recent service activity will appear here once you log maintenance.</div>
-              ) : (
-                recentServices.map((service) => (
-                  <button
-                    className="panel-item"
-                    key={`${service.carId}-${service.serviceId}`}
-                    onClick={() => void fetchCar(service.carId)}
-                    type="button"
-                  >
-                    <div className="panel-item-title">{service.serviceType}</div>
-                    <div className="panel-item-copy">{service.carName}</div>
-                    <div className="panel-item-meta">
-                      <span>{service.date}</span>
-                      <span>{service.mileage.toLocaleString()} mi</span>
-                      <span>{formatCurrency(service.cost)}</span>
-                    </div>
-                  </button>
-                ))
-              )}
+            <Link className="section-link" href="/services">
+              View All
+            </Link>
+          </div>
+          {recentServices.length === 0 ? (
+            <div className="empty-inline">Recent service activity will appear here once you log maintenance.</div>
+          ) : (
+            <div className="preview-list">
+              {recentServices.slice(0, 6).map((service) => (
+                <button
+                  className="preview-row preview-row-stack"
+                  key={`${service.carId}-${service.serviceId}`}
+                  onClick={() => openVehiclePage(service.carId)}
+                  type="button"
+                >
+                  <span className="preview-main">{service.serviceType}</span>
+                  <span className="preview-sub">{service.carName}</span>
+                  <span className="preview-meta">
+                    {service.date} · {service.mileage.toLocaleString()} mi · {formatCurrency(service.cost)}
+                  </span>
+                </button>
+              ))}
             </div>
-          </section>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
 
-          <section className="result-panel">
-            {message ? <div className={`status-card ${message.type}`}>{message.text}</div> : null}
+function GarageIndexView({
+  attentionItems,
+  cars,
+  openVehicleInsightsPage,
+  openVehiclePage,
+  overview
+}: {
+  attentionItems: AttentionItem[];
+  cars: CarSummary[];
+  openVehicleInsightsPage: (carId: number) => void;
+  openVehiclePage: (carId: number) => void;
+  overview: DashboardOverview;
+}) {
+  return (
+    <div className="content-stack">
+      <section className="overview-grid compact-shell">
+        <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
+        <OverviewCard
+          label="Average Mileage"
+          value={overview.averageMileage === null ? "N/A" : `${overview.averageMileage.toLocaleString()} mi`}
+        />
+        <OverviewCard label="Flagged Vehicles" value={String(overview.flaggedVehicleCount)} />
+        <OverviewCard
+          label="Average Service Cost"
+          value={formatCurrency(overview.averageServiceCost)}
+        />
+      </section>
 
-            {selectedCar ? (
-              <div className="detail-stack">
-                <CarDetailView
-                  car={selectedCar}
-                  cancelEditingMileageEntry={cancelEditingMileageEntry}
-                  cancelEditingService={cancelEditingService}
-                  deletingMileageEntryId={deletingMileageEntryId}
-                  deletingServiceId={deletingServiceId}
-                  editMileageEntryForm={editMileageEntryForm}
-                  editServiceForm={editServiceForm}
-                  editingMileageEntryId={editingMileageEntryId}
-                  editingServiceId={editingServiceId}
-                  filteredServiceHistory={filteredServiceHistory}
-                  handleDeleteMileageEntry={handleDeleteMileageEntry}
-                  handleDeleteService={handleDeleteService}
-                  handleSaveMileageEntryEdit={handleSaveMileageEntryEdit}
-                  handleSaveServiceEdit={handleSaveServiceEdit}
-                  isSavingMileageEntry={isSavingMileageEntry}
-                  isSavingService={isSavingService}
-                  serviceDateFrom={serviceDateFrom}
-                  serviceDateTo={serviceDateTo}
-                  serviceSearch={serviceSearch}
-                  serviceSort={serviceSort}
-                  setTrendDateFrom={setTrendDateFrom}
-                  setTrendDateTo={setTrendDateTo}
-                  setTrendServiceTypeFilter={setTrendServiceTypeFilter}
-                  serviceTypeFilter={serviceTypeFilter}
-                  serviceTypeOptions={serviceTypeOptions}
-                  setServiceDateFrom={setServiceDateFrom}
-                  setServiceDateTo={setServiceDateTo}
-                  setServiceSearch={setServiceSearch}
-                  setServiceSort={setServiceSort}
-                  setServiceTypeFilter={setServiceTypeFilter}
-                  trendAverageMonthlyExpense={trendAverageMonthlyExpense}
-                  trendAverageMonthlyMileage={trendAverageMonthlyMileage}
-                  trendAverageMonthlyServiceFrequency={trendAverageMonthlyServiceFrequency}
-                  trendCategoryExpenses={trendCategoryExpenses}
-                  trendDateFrom={trendDateFrom}
-                  trendDateTo={trendDateTo}
-                  trendExpensePoints={trendExpensePoints}
-                  trendMilesDriven={trendMilesDriven}
-                  trendMileagePoints={trendMileagePoints}
-                  trendServiceTypeFilter={trendServiceTypeFilter}
-                  triggerReminderAction={handleReminderAction}
-                  startEditingMileageEntry={startEditingMileageEntry}
-                  startEditingService={startEditingService}
-                  updateEditMileageEntryField={updateEditMileageEntryField}
-                  updateEditServiceField={updateEditServiceField}
-                />
-
-                <section className="detail-section detail-management">
-                  <div className="detail-section-heading">
-                    <h3>Manage Vehicle</h3>
-                    <p>Edit profile fields, correct mileage, or remove the vehicle entirely.</p>
-                  </div>
-
-                  <form className="form-grid" onSubmit={handleSaveVehicle}>
-                    <div className="field-row">
-                      <div className="field-group">
-                        <label htmlFor="editMake">Make</label>
-                        <input
-                          id="editMake"
-                          onChange={(event) => updateEditCarField("make", event.target.value)}
-                          required
-                          type="text"
-                          value={editCarForm.make}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label htmlFor="editModel">Model</label>
-                        <input
-                          id="editModel"
-                          onChange={(event) => updateEditCarField("model", event.target.value)}
-                          required
-                          type="text"
-                          value={editCarForm.model}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="field-row">
-                      <div className="field-group">
-                        <label htmlFor="editYear">Year</label>
-                        <input
-                          id="editYear"
-                          min="1900"
-                          onChange={(event) => updateEditCarField("year", event.target.value)}
-                          required
-                          type="number"
-                          value={editCarForm.year}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label htmlFor="editMileage">Current Mileage</label>
-                        <input
-                          id="editMileage"
-                          min="0"
-                          onChange={(event) => updateEditCarField("mileage", event.target.value)}
-                          required
-                          type="number"
-                          value={editCarForm.mileage}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label htmlFor="editImageUrl">Image URL</label>
-                      <input
-                        id="editImageUrl"
-                        onChange={(event) => updateEditCarField("imageUrl", event.target.value)}
-                        type="text"
-                        value={editCarForm.imageUrl}
-                      />
-                    </div>
-
-                    <ReminderRuleEditor
-                      mode="edit"
-                      onAddRule={addReminderRule}
-                      onRemoveRule={removeReminderRule}
-                      onUpdateRule={updateReminderRuleField}
-                      rules={editCarForm.serviceReminderRules}
-                    />
-
-                    <label className="checkbox-row">
-                      <input
-                        checked={editCarForm.allowMileageCorrection}
-                        onChange={(event) =>
-                          updateEditCarField("allowMileageCorrection", event.target.checked)
-                        }
-                        type="checkbox"
-                      />
-                      <span>Allow a lower mileage if you are correcting a previous value.</span>
-                    </label>
-
-                    <div className="action-row">
-                      <button className="btn btn-primary" disabled={isSavingVehicle} type="submit">
-                        {isSavingVehicle ? "Saving..." : "Save Vehicle Changes"}
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>All Vehicles</h2>
+            <p>Open records to update mileage, services, or vehicle details.</p>
+          </div>
+        </div>
+        {cars.length === 0 ? (
+          <div className="empty-inline">No vehicles yet. Use Add Vehicle to create your first record.</div>
+        ) : (
+          <table className="workspace-table">
+            <thead>
+              <tr>
+                <th>Vehicle</th>
+                <th>ID</th>
+                <th>Mileage</th>
+                <th>Services</th>
+                <th>Lifetime Cost</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {cars.map((car) => {
+                const reminder = attentionItems.find((item) => item.carId === car.carId);
+                return (
+                  <tr key={car.carId}>
+                    <td>{car.carName}</td>
+                    <td>{car.carId}</td>
+                    <td>{car.currentMileage.toLocaleString()} mi</td>
+                    <td>{car.serviceCount}</td>
+                    <td>{formatCurrency(car.lifetimeExpenses)}</td>
+                    <td>
+                      {reminder ? (
+                        <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
+                          {reminder.serviceType}
+                        </span>
+                      ) : (
+                        <span className="comparison-status ok">On schedule</span>
+                      )}
+                    </td>
+                    <td className="table-actions">
+                      <button className="btn btn-inline" onClick={() => openVehiclePage(car.carId)} type="button">
+                        Records
                       </button>
-                      <button
-                        className="btn btn-danger"
-                        disabled={isDeletingVehicle}
-                        onClick={handleDeleteVehicle}
-                        type="button"
-                      >
-                        {isDeletingVehicle ? "Deleting..." : "Delete Vehicle"}
+                      <button className="btn btn-inline" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
+                        Insights
                       </button>
-                    </div>
-                  </form>
-                </section>
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-state-inner">
-                  <div className="empty-state-badge">CK</div>
-                  <h3>Your vehicle workspace will appear here</h3>
-                  <p>
-                    Open a vehicle to review its summary, mileage history, service records,
-                    and management actions in one place.
-                  </p>
-                </div>
-              </div>
-            )}
-          </section>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function VehicleCreateView({
+  carForm,
+  handleAddCar,
+  onAddRule,
+  onRemoveRule,
+  onUpdateCarField,
+  onUpdateRule
+}: {
+  carForm: CarFormState;
+  handleAddCar: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  onAddRule: (mode: "create" | "edit") => void;
+  onRemoveRule: (mode: "create" | "edit", index: number) => void;
+  onUpdateCarField: (field: keyof CarFormState, value: string | ReminderRuleForm[]) => void;
+  onUpdateRule: (
+    mode: "create" | "edit",
+    index: number,
+    field: keyof ReminderRuleForm,
+    value: string
+  ) => void;
+}) {
+  return (
+    <section className="workspace-panel workspace-form-panel">
+      <div className="workspace-panel-header">
+        <div>
+          <h2>New Vehicle</h2>
+          <p>Create the vehicle profile first, then maintain its mileage and service records from the vehicle page.</p>
         </div>
       </div>
-    </main>
+
+      <form className="form-grid" onSubmit={handleAddCar}>
+        <div className="field-row">
+          <div className="field-group">
+            <label htmlFor="make">Make</label>
+            <input
+              id="make"
+              onChange={(event) => onUpdateCarField("make", event.target.value)}
+              required
+              type="text"
+              value={carForm.make}
+            />
+          </div>
+          <div className="field-group">
+            <label htmlFor="model">Model</label>
+            <input
+              id="model"
+              onChange={(event) => onUpdateCarField("model", event.target.value)}
+              required
+              type="text"
+              value={carForm.model}
+            />
+          </div>
+        </div>
+
+        <div className="field-row">
+          <div className="field-group">
+            <label htmlFor="year">Year</label>
+            <input
+              id="year"
+              min="1900"
+              onChange={(event) => onUpdateCarField("year", event.target.value)}
+              required
+              type="number"
+              value={carForm.year}
+            />
+          </div>
+          <div className="field-group">
+            <label htmlFor="mileage">Current Mileage</label>
+            <input
+              id="mileage"
+              min="0"
+              onChange={(event) => onUpdateCarField("mileage", event.target.value)}
+              required
+              type="number"
+              value={carForm.mileage}
+            />
+          </div>
+        </div>
+
+        <div className="field-group">
+          <label htmlFor="imageUrl">Image URL</label>
+          <input
+            id="imageUrl"
+            onChange={(event) => onUpdateCarField("imageUrl", event.target.value)}
+            type="text"
+            value={carForm.imageUrl}
+          />
+        </div>
+
+        <ReminderRuleEditor
+          mode="create"
+          onAddRule={onAddRule}
+          onRemoveRule={onRemoveRule}
+          onUpdateRule={onUpdateRule}
+          rules={carForm.serviceReminderRules}
+        />
+
+        <div className="action-row">
+          <button className="btn btn-primary" type="submit">
+            Create Vehicle
+          </button>
+          <Link className="btn btn-secondary" href="/garage">
+            Cancel
+          </Link>
+        </div>
+      </form>
+    </section>
   );
+}
+
+function ServicesIndexView({
+  openVehiclePage,
+  services
+}: {
+  openVehiclePage: (carId: number) => void;
+  services: DashboardRecentService[];
+}) {
+  return (
+    <section className="workspace-panel">
+      <div className="workspace-panel-header">
+        <div>
+          <h2>Service Records</h2>
+          <p>Open the vehicle record to edit or correct any entry.</p>
+        </div>
+      </div>
+      {services.length === 0 ? (
+        <div className="empty-inline">No service records yet.</div>
+      ) : (
+        <table className="workspace-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Vehicle</th>
+              <th>Category</th>
+              <th>Mileage</th>
+              <th>Cost</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {services.map((service) => (
+              <tr key={`${service.carId}-${service.serviceId}`}>
+                <td>{service.date}</td>
+                <td>{service.carName}</td>
+                <td>{service.serviceType}</td>
+                <td>{service.mileage.toLocaleString()} mi</td>
+                <td>{formatCurrency(service.cost)}</td>
+                <td className="table-actions">
+                  <button className="btn btn-inline" onClick={() => openVehiclePage(service.carId)} type="button">
+                    Open Vehicle
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+function AccountWorkspaceView({
+  handleSaveProfile,
+  isSavingProfile,
+  profile,
+  profileForm,
+  updateProfileField,
+  username
+}: {
+  handleSaveProfile: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  isSavingProfile: boolean;
+  profile: UserProfile | null;
+  profileForm: { displayName: string; email: string };
+  updateProfileField: (field: "displayName" | "email", value: string) => void;
+  username: string;
+}) {
+  return (
+    <div className="content-stack two-column-shell">
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Profile</h2>
+            <p>Update the account information tied to this login.</p>
+          </div>
+        </div>
+        <form className="form-grid" onSubmit={handleSaveProfile}>
+          <div className="field-group">
+            <label htmlFor="profileDisplayName">Display Name</label>
+            <input
+              id="profileDisplayName"
+              onChange={(event) => updateProfileField("displayName", event.target.value)}
+              required
+              type="text"
+              value={profileForm.displayName}
+            />
+          </div>
+
+          <div className="field-group">
+            <label htmlFor="profileEmail">Email</label>
+            <input
+              id="profileEmail"
+              onChange={(event) => updateProfileField("email", event.target.value)}
+              required
+              type="email"
+              value={profileForm.email}
+            />
+          </div>
+
+          <button className="btn btn-primary" disabled={isSavingProfile} type="submit">
+            {isSavingProfile ? "Saving..." : "Save Profile"}
+          </button>
+        </form>
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Account</h2>
+            <p>Reference information for the signed-in user.</p>
+          </div>
+        </div>
+        <dl className="detail-list">
+          <div>
+            <dt>Username</dt>
+            <dd>@{username}</dd>
+          </div>
+          <div>
+            <dt>User ID</dt>
+            <dd>{profile?.id ?? "Unavailable"}</dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>{profile ? new Date(profile.createdAt).toLocaleDateString("en-US") : "Unavailable"}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  );
+}
+
+function VehicleWorkspaceView({
+  car,
+  cancelEditingMileageEntry,
+  cancelEditingService,
+  deletingMileageEntryId,
+  deletingServiceId,
+  editCarForm,
+  editMileageEntryForm,
+  editServiceForm,
+  editingMileageEntryId,
+  editingServiceId,
+  handleAddService,
+  handleDeleteMileageEntry,
+  handleDeleteService,
+  handleDeleteVehicle,
+  handleReminderAction,
+  handleSaveMileageEntryEdit,
+  handleSaveServiceEdit,
+  handleSaveVehicle,
+  handleUpdateMileage,
+  isDeletingVehicle,
+  isSavingMileageEntry,
+  isSavingService,
+  isSavingVehicle,
+  mileageForm,
+  openVehicleInsightsPage,
+  onAddRule,
+  onRemoveRule,
+  onUpdateRule,
+  serviceForm,
+  startEditingMileageEntry,
+  startEditingService,
+  updateEditCarField,
+  updateEditMileageEntryField,
+  updateEditServiceField,
+  updateMileageField,
+  updateServiceField
+}: {
+  car: CarDetails | null;
+  cancelEditingMileageEntry: () => void;
+  cancelEditingService: () => void;
+  deletingMileageEntryId: number | null;
+  deletingServiceId: number | null;
+  editCarForm: EditCarFormState;
+  editMileageEntryForm: typeof emptyEditMileageEntryForm;
+  editServiceForm: typeof emptyEditServiceForm;
+  editingMileageEntryId: number | null;
+  editingServiceId: number | null;
+  handleAddService: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  handleDeleteMileageEntry: (entryId: number) => Promise<void>;
+  handleDeleteService: (serviceId: number) => Promise<void>;
+  handleDeleteVehicle: () => Promise<void>;
+  handleReminderAction: (carId: number, serviceType: string) => Promise<void>;
+  handleSaveMileageEntryEdit: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  handleSaveServiceEdit: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  handleSaveVehicle: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  handleUpdateMileage: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  isDeletingVehicle: boolean;
+  isSavingMileageEntry: boolean;
+  isSavingService: boolean;
+  isSavingVehicle: boolean;
+  mileageForm: typeof emptyMileageForm;
+  openVehicleInsightsPage: (carId: number) => void;
+  onAddRule: (mode: "create" | "edit") => void;
+  onRemoveRule: (mode: "create" | "edit", index: number) => void;
+  onUpdateRule: (
+    mode: "create" | "edit",
+    index: number,
+    field: keyof ReminderRuleForm,
+    value: string
+  ) => void;
+  serviceForm: typeof emptyServiceForm;
+  startEditingMileageEntry: (entry: MileageHistoryItem) => void;
+  startEditingService: (service: ServiceHistoryItem) => void;
+  updateEditCarField: (
+    field: keyof EditCarFormState,
+    value: string | boolean | ReminderRuleForm[]
+  ) => void;
+  updateEditMileageEntryField: (
+    field: keyof typeof emptyEditMileageEntryForm,
+    value: string | boolean
+  ) => void;
+  updateEditServiceField: (field: keyof typeof emptyEditServiceForm, value: string) => void;
+  updateMileageField: (field: keyof typeof emptyMileageForm, value: string | boolean) => void;
+  updateServiceField: (field: keyof typeof emptyServiceForm, value: string) => void;
+}) {
+  if (!car) {
+    return (
+      <section className="workspace-panel">
+        <div className="empty-inline">Vehicle not found.</div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="content-stack">
+      <section className="overview-grid compact-shell">
+        <OverviewCard label="Current Mileage" value={`${car.currentMileage.toLocaleString()} mi`} />
+        <OverviewCard label="Last Service" value={car.lastServiceDate} />
+        <OverviewCard label="Service Records" value={String(car.serviceCount)} />
+        <OverviewCard label="Lifetime Expenses" value={formatCurrency(car.lifetimeExpenses)} />
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>{car.carName}</h2>
+            <p>Use this page for data entry, corrections, and vehicle settings.</p>
+          </div>
+          <button className="btn btn-secondary" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
+            View Trends and Timeline
+          </button>
+        </div>
+        {car.categoryReminders.length > 0 ? (
+          <div className="reminder-rule-list">
+            {car.categoryReminders.map((reminder) => (
+              <ReminderStatusCard
+                carId={car.carId}
+                key={reminder.serviceType}
+                onLogService={handleReminderAction}
+                reminder={reminder}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="empty-inline">No reminder rules are configured for this vehicle.</div>
+        )}
+      </section>
+
+      <div className="records-grid">
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Update Mileage</h2>
+              <p>Add a new mileage entry.</p>
+            </div>
+          </div>
+          <form className="form-grid" onSubmit={handleUpdateMileage}>
+            <input type="hidden" value={mileageForm.carId} />
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="mileageDate">Entry Date</label>
+                <input
+                  id="mileageDate"
+                  onChange={(event) => updateMileageField("date", event.target.value)}
+                  type="date"
+                  value={mileageForm.date}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="mileageValue">Mileage</label>
+                <input
+                  id="mileageValue"
+                  min="0"
+                  onChange={(event) => updateMileageField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={mileageForm.mileage}
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label htmlFor="mileageNotes">Notes</label>
+              <textarea
+                id="mileageNotes"
+                onChange={(event) => updateMileageField("notes", event.target.value)}
+                rows={3}
+                value={mileageForm.notes}
+              />
+            </div>
+            <label className="checkbox-row">
+              <input
+                checked={mileageForm.allowCorrection}
+                onChange={(event) => updateMileageField("allowCorrection", event.target.checked)}
+                type="checkbox"
+              />
+              <span>Allow a lower mileage if this is a correction.</span>
+            </label>
+            <button className="btn btn-primary" type="submit">
+              Save Mileage Entry
+            </button>
+          </form>
+        </section>
+
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Add Service</h2>
+              <p>Log a service record for this vehicle.</p>
+            </div>
+          </div>
+          <form className="form-grid" onSubmit={handleAddService}>
+            <input type="hidden" value={serviceForm.carId} />
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="serviceDate">Service Date</label>
+                <input
+                  id="serviceDate"
+                  onChange={(event) => updateServiceField("serviceDate", event.target.value)}
+                  required
+                  type="date"
+                  value={serviceForm.serviceDate}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="serviceMileage">Mileage at Service</label>
+                <input
+                  id="serviceMileage"
+                  min="0"
+                  onChange={(event) => updateServiceField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={serviceForm.mileage}
+                />
+              </div>
+            </div>
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="serviceType">Service Type</label>
+                <select
+                  id="serviceType"
+                  onChange={(event) => updateServiceField("serviceType", event.target.value)}
+                  value={serviceForm.serviceType}
+                >
+                  {serviceTypes.map((serviceType) => (
+                    <option key={serviceType} value={serviceType}>
+                      {serviceType}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field-group">
+                <label htmlFor="serviceCost">Cost</label>
+                <input
+                  id="serviceCost"
+                  min="0"
+                  onChange={(event) => updateServiceField("cost", event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={serviceForm.cost}
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label htmlFor="serviceDescription">Description</label>
+              <input
+                id="serviceDescription"
+                onChange={(event) => updateServiceField("description", event.target.value)}
+                type="text"
+                value={serviceForm.description}
+              />
+            </div>
+            <div className="field-group">
+              <label htmlFor="serviceNotes">Notes</label>
+              <textarea
+                id="serviceNotes"
+                onChange={(event) => updateServiceField("notes", event.target.value)}
+                rows={3}
+                value={serviceForm.notes}
+              />
+            </div>
+            <button className="btn btn-primary" type="submit">
+              Save Service Record
+            </button>
+          </form>
+        </section>
+      </div>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Service History</h2>
+            <p>Edit or delete incorrect records.</p>
+          </div>
+        </div>
+        {car.serviceHistory.length === 0 ? (
+          <div className="empty-inline">No service records yet.</div>
+        ) : (
+          <table className="workspace-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Mileage</th>
+                <th>Cost</th>
+                <th>Description</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {car.serviceHistory.map((service) => (
+                <tr key={service.serviceId}>
+                  <td>{service.date}</td>
+                  <td>{service.serviceType}</td>
+                  <td>{service.mileage.toLocaleString()} mi</td>
+                  <td>{formatCurrency(service.cost)}</td>
+                  <td>{service.description || "N/A"}</td>
+                  <td className="table-actions">
+                    <button className="btn btn-inline" onClick={() => startEditingService(service)} type="button">
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-inline-danger"
+                      disabled={deletingServiceId === service.serviceId}
+                      onClick={() => void handleDeleteService(service.serviceId)}
+                      type="button"
+                    >
+                      {deletingServiceId === service.serviceId ? "Deleting..." : "Delete"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {editingServiceId !== null ? (
+          <form className="form-grid inline-edit-form" onSubmit={handleSaveServiceEdit}>
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="editServiceDate">Service Date</label>
+                <input
+                  id="editServiceDate"
+                  onChange={(event) => updateEditServiceField("serviceDate", event.target.value)}
+                  required
+                  type="date"
+                  value={editServiceForm.serviceDate}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="editServiceMileage">Mileage</label>
+                <input
+                  id="editServiceMileage"
+                  min="0"
+                  onChange={(event) => updateEditServiceField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={editServiceForm.mileage}
+                />
+              </div>
+            </div>
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="editServiceType">Service Type</label>
+                <select
+                  id="editServiceType"
+                  onChange={(event) => updateEditServiceField("serviceType", event.target.value)}
+                  value={editServiceForm.serviceType}
+                >
+                  {serviceTypes.map((serviceType) => (
+                    <option key={serviceType} value={serviceType}>
+                      {serviceType}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field-group">
+                <label htmlFor="editServiceCost">Cost</label>
+                <input
+                  id="editServiceCost"
+                  min="0"
+                  onChange={(event) => updateEditServiceField("cost", event.target.value)}
+                  step="0.01"
+                  type="number"
+                  value={editServiceForm.cost}
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label htmlFor="editServiceDescription">Description</label>
+              <input
+                id="editServiceDescription"
+                onChange={(event) => updateEditServiceField("description", event.target.value)}
+                type="text"
+                value={editServiceForm.description}
+              />
+            </div>
+            <div className="field-group">
+              <label htmlFor="editServiceNotes">Notes</label>
+              <textarea
+                id="editServiceNotes"
+                onChange={(event) => updateEditServiceField("notes", event.target.value)}
+                rows={3}
+                value={editServiceForm.notes}
+              />
+            </div>
+            <div className="action-row">
+              <button className="btn btn-primary" disabled={isSavingService} type="submit">
+                {isSavingService ? "Saving..." : "Save Service Changes"}
+              </button>
+              <button className="btn btn-secondary" onClick={cancelEditingService} type="button">
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Mileage Log</h2>
+            <p>Edit manual mileage entries when needed.</p>
+          </div>
+        </div>
+        <table className="workspace-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Mileage</th>
+              <th>Source</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {car.mileageHistory.map((entry) => (
+              <tr key={entry.entryId}>
+                <td>{entry.date}</td>
+                <td>{entry.mileage.toLocaleString()} mi</td>
+                <td>{formatSourceLabel(entry.source)}</td>
+                <td>{entry.notes}</td>
+                <td className="table-actions">
+                  {entry.canEdit ? (
+                    <button className="btn btn-inline" onClick={() => startEditingMileageEntry(entry)} type="button">
+                      Edit
+                    </button>
+                  ) : null}
+                  {entry.canDelete ? (
+                    <button
+                      className="btn btn-inline-danger"
+                      disabled={deletingMileageEntryId === entry.entryId}
+                      onClick={() => void handleDeleteMileageEntry(entry.entryId)}
+                      type="button"
+                    >
+                      {deletingMileageEntryId === entry.entryId ? "Deleting..." : "Delete"}
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {editingMileageEntryId !== null ? (
+          <form className="form-grid inline-edit-form" onSubmit={handleSaveMileageEntryEdit}>
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="editMileageEntryDate">Entry Date</label>
+                <input
+                  id="editMileageEntryDate"
+                  onChange={(event) => updateEditMileageEntryField("date", event.target.value)}
+                  required
+                  type="date"
+                  value={editMileageEntryForm.date}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="editMileageEntryValue">Mileage</label>
+                <input
+                  id="editMileageEntryValue"
+                  min="0"
+                  onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={editMileageEntryForm.mileage}
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label htmlFor="editMileageEntryNotes">Notes</label>
+              <textarea
+                id="editMileageEntryNotes"
+                onChange={(event) => updateEditMileageEntryField("notes", event.target.value)}
+                rows={3}
+                value={editMileageEntryForm.notes}
+              />
+            </div>
+            <label className="checkbox-row">
+              <input
+                checked={editMileageEntryForm.allowCorrection}
+                onChange={(event) => updateEditMileageEntryField("allowCorrection", event.target.checked)}
+                type="checkbox"
+              />
+              <span>Allow a lower mileage if this edit is a correction.</span>
+            </label>
+            <div className="action-row">
+              <button className="btn btn-primary" disabled={isSavingMileageEntry} type="submit">
+                {isSavingMileageEntry ? "Saving..." : "Save Mileage Entry"}
+              </button>
+              <button className="btn btn-secondary" onClick={cancelEditingMileageEntry} type="button">
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Vehicle Settings</h2>
+            <p>Edit the base vehicle profile or delete the record.</p>
+          </div>
+        </div>
+        <form className="form-grid" onSubmit={handleSaveVehicle}>
+          <div className="field-row">
+            <div className="field-group">
+              <label htmlFor="editMake">Make</label>
+              <input
+                id="editMake"
+                onChange={(event) => updateEditCarField("make", event.target.value)}
+                required
+                type="text"
+                value={editCarForm.make}
+              />
+            </div>
+            <div className="field-group">
+              <label htmlFor="editModel">Model</label>
+              <input
+                id="editModel"
+                onChange={(event) => updateEditCarField("model", event.target.value)}
+                required
+                type="text"
+                value={editCarForm.model}
+              />
+            </div>
+          </div>
+
+          <div className="field-row">
+            <div className="field-group">
+              <label htmlFor="editYear">Year</label>
+              <input
+                id="editYear"
+                min="1900"
+                onChange={(event) => updateEditCarField("year", event.target.value)}
+                required
+                type="number"
+                value={editCarForm.year}
+              />
+            </div>
+            <div className="field-group">
+              <label htmlFor="editMileage">Current Mileage</label>
+              <input
+                id="editMileage"
+                min="0"
+                onChange={(event) => updateEditCarField("mileage", event.target.value)}
+                required
+                type="number"
+                value={editCarForm.mileage}
+              />
+            </div>
+          </div>
+
+          <div className="field-group">
+            <label htmlFor="editImageUrl">Image URL</label>
+            <input
+              id="editImageUrl"
+              onChange={(event) => updateEditCarField("imageUrl", event.target.value)}
+              type="text"
+              value={editCarForm.imageUrl}
+            />
+          </div>
+
+          <ReminderRuleEditor
+            mode="edit"
+            onAddRule={onAddRule}
+            onRemoveRule={onRemoveRule}
+            onUpdateRule={onUpdateRule}
+            rules={editCarForm.serviceReminderRules}
+          />
+
+          <label className="checkbox-row">
+            <input
+              checked={editCarForm.allowMileageCorrection}
+              onChange={(event) => updateEditCarField("allowMileageCorrection", event.target.checked)}
+              type="checkbox"
+            />
+            <span>Allow a lower mileage if you are correcting a previous value.</span>
+          </label>
+
+          <div className="action-row">
+            <button className="btn btn-primary" disabled={isSavingVehicle} type="submit">
+              {isSavingVehicle ? "Saving..." : "Save Vehicle Changes"}
+            </button>
+            <button
+              className="btn btn-danger"
+              disabled={isDeletingVehicle}
+              onClick={handleDeleteVehicle}
+              type="button"
+            >
+              {isDeletingVehicle ? "Deleting..." : "Delete Vehicle"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function VehicleInsightsView({
+  car,
+  serviceTypeOptions,
+  setTrendDateFrom,
+  setTrendDateTo,
+  setTrendServiceTypeFilter,
+  trendAverageMonthlyExpense,
+  trendAverageMonthlyMileage,
+  trendAverageMonthlyServiceFrequency,
+  trendCategoryExpenses,
+  trendDateFrom,
+  trendDateTo,
+  trendExpensePoints,
+  trendMilesDriven,
+  trendMileagePoints,
+  trendServiceTypeFilter
+}: {
+  car: CarDetails | null;
+  serviceTypeOptions: string[];
+  setTrendDateFrom: (value: string) => void;
+  setTrendDateTo: (value: string) => void;
+  setTrendServiceTypeFilter: (value: string) => void;
+  trendAverageMonthlyExpense: number | null;
+  trendAverageMonthlyMileage: number | null;
+  trendAverageMonthlyServiceFrequency: number | null;
+  trendCategoryExpenses: CategoryExpenseItem[];
+  trendDateFrom: string;
+  trendDateTo: string;
+  trendExpensePoints: TrendPoint[];
+  trendMilesDriven: number | null;
+  trendMileagePoints: TrendPoint[];
+  trendServiceTypeFilter: string;
+}) {
+  if (!car) {
+    return (
+      <section className="workspace-panel">
+        <div className="empty-inline">Vehicle not found.</div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="content-stack">
+      <section className="overview-grid compact-shell">
+        <OverviewCard label="Miles In Scope" value={trendMilesDriven === null ? "N/A" : `${trendMilesDriven.toLocaleString()} mi`} />
+        <OverviewCard
+          label="Avg Monthly Miles"
+          value={trendAverageMonthlyMileage === null ? "N/A" : `${trendAverageMonthlyMileage.toLocaleString()} mi`}
+        />
+        <OverviewCard label="Avg Monthly Expense" value={formatCurrency(trendAverageMonthlyExpense)} />
+        <OverviewCard
+          label="Services / Month"
+          value={trendAverageMonthlyServiceFrequency === null ? "N/A" : String(trendAverageMonthlyServiceFrequency)}
+        />
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Trend Filters</h2>
+            <p>Keep the analysis separate from day-to-day data entry.</p>
+          </div>
+        </div>
+        <div className="toolbar-grid">
+          <div className="field-group">
+            <label htmlFor="trendDateFrom">From Date</label>
+            <input
+              id="trendDateFrom"
+              onChange={(event) => setTrendDateFrom(event.target.value)}
+              type="date"
+              value={trendDateFrom}
+            />
+          </div>
+          <div className="field-group">
+            <label htmlFor="trendDateTo">To Date</label>
+            <input
+              id="trendDateTo"
+              onChange={(event) => setTrendDateTo(event.target.value)}
+              type="date"
+              value={trendDateTo}
+            />
+          </div>
+          <div className="field-group">
+            <label htmlFor="trendServiceType">Service Category</label>
+            <select
+              id="trendServiceType"
+              onChange={(event) => setTrendServiceTypeFilter(event.target.value)}
+              value={trendServiceTypeFilter}
+            >
+              <option value="all">All categories</option>
+              {serviceTypeOptions.map((serviceType) => (
+                <option key={serviceType} value={serviceType}>
+                  {serviceType}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div className="trend-grid">
+        <TrendCard
+          emptyLabel="Mileage trend will appear after a few recorded entries."
+          label="Mileage Trend"
+          points={trendMileagePoints}
+          prefix=""
+          suffix=" mi"
+        />
+        <TrendCard
+          emptyLabel="Expense trend will appear after you add priced service records."
+          label="Expense Trend"
+          points={trendExpensePoints}
+          prefix="$"
+          suffix=""
+        />
+      </div>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Expense by Category</h2>
+            <p>Cost concentration across service types.</p>
+          </div>
+        </div>
+        {trendCategoryExpenses.length === 0 ? (
+          <div className="empty-inline">No service costs match the current filters.</div>
+        ) : (
+          <div className="category-list">
+            {trendCategoryExpenses.map((item) => (
+              <CategoryExpenseCard item={item} key={item.category} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Mileage Timeline</h2>
+            <p>A chronological view of all recorded mileage entries.</p>
+          </div>
+        </div>
+        <div className="timeline-list">
+          {car.mileageHistory.map((entry) => (
+            <div className="timeline-card" key={entry.entryId}>
+              <div className="timeline-top">
+                <div className="timeline-date">{entry.date}</div>
+                <div className="timeline-mileage">{entry.mileage.toLocaleString()} mi</div>
+              </div>
+              <div className="timeline-source">{formatSourceLabel(entry.source)}</div>
+              <div className="timeline-notes">{entry.notes}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function getPageMeta(view: DashboardView, selectedCar: CarDetails | null) {
+  switch (view) {
+    case "garage":
+      return {
+        title: "Garage",
+        description: "A clean list of every vehicle in the account, with direct paths into records and insights."
+      };
+    case "new-vehicle":
+      return {
+        title: "Add Vehicle",
+        description: "Create the vehicle first, then maintain the records from its own page."
+      };
+    case "vehicle":
+      return {
+        title: selectedCar?.carName ?? "Vehicle Records",
+        description: "Mileage updates, service updates, and settings live here instead of on the dashboard."
+      };
+    case "vehicle-insights":
+      return {
+        title: selectedCar ? `${selectedCar.carName} Insights` : "Vehicle Insights",
+        description: "Trend analysis, reminder context, and timeline views stay on their own page."
+      };
+    case "services":
+      return {
+        title: "Service History",
+        description: "A full-width service log with a direct path back to the owning vehicle."
+      };
+    case "account":
+      return {
+        title: "Account",
+        description: "Profile details and account information, separated from the vehicle workspace."
+      };
+    case "dashboard":
+    default:
+      return {
+        title: "Dashboard",
+        description: "The one-page summary for the garage, recent activity, and maintenance status."
+      };
+  }
 }
 
 function CarDetailView({

@@ -1,7 +1,0 @@
-login function
-better ui
-addService approute 
-
-Make a button to list all cars
-
-display service history next to car summary in ui

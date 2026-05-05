@@ -6,7 +6,7 @@ import { loadWorkspaceData } from "@/lib/page-data";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function AccountPage() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       profile={profile}
       recentServices={recentServices}
       username={user.username}
-      view="dashboard"
+      view="account"
     />
   );
 }
