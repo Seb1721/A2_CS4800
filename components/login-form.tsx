@@ -8,6 +8,8 @@ type Mode = "login" | "register";
 export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +26,7 @@ export function LoginForm() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ displayName, email, username, password })
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -104,6 +106,34 @@ export function LoginForm() {
           {error ? <div className="status-card error">{error}</div> : null}
 
           <form className="form-grid" onSubmit={handleSubmit}>
+            {mode === "register" ? (
+              <>
+                <div className="field-group">
+                  <label htmlFor="displayName">Display Name</label>
+                  <input
+                    autoComplete="name"
+                    id="displayName"
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    required
+                    type="text"
+                    value={displayName}
+                  />
+                </div>
+
+                <div className="field-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    autoComplete="email"
+                    id="email"
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                    type="email"
+                    value={email}
+                  />
+                </div>
+              </>
+            ) : null}
+
             <div className="field-group">
               <label htmlFor="username">Username</label>
               <input

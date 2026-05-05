@@ -9,10 +9,12 @@ export async function POST(request: Request) {
     await ensureAppSetup();
 
     const body = await request.json().catch(() => null);
+    const displayName = String(body?.displayName ?? "");
+    const email = String(body?.email ?? "");
     const username = String(body?.username ?? "");
     const password = String(body?.password ?? "");
 
-    const createdUsername = await createUser(username, password);
+    const createdUsername = await createUser(username, password, email, displayName);
     const response = NextResponse.json({ ok: true, username: createdUsername }, { status: 201 });
     const token = await createSession(createdUsername);
     await setSessionCookie(response, token);
@@ -22,7 +24,9 @@ export async function POST(request: Request) {
     const status =
       message === "Username must be at least 3 characters." ||
       message === "Password must be at least 8 characters." ||
-      message === "That username is already taken."
+      message === "Enter a valid email address." ||
+      message === "That username is already taken." ||
+      message === "That email address is already in use."
         ? 400
         : isDatabaseUnavailableError(error)
           ? 503

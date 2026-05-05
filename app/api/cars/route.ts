@@ -28,11 +28,12 @@ export async function POST(request: Request) {
 
   try {
     const car = await createCar(user.username, {
+      imageUrl: String(body?.imageUrl ?? ""),
       make: String(body?.make ?? ""),
+      serviceReminderRules: Array.isArray(body?.serviceReminderRules) ? body.serviceReminderRules : [],
       model: String(body?.model ?? ""),
-      year: Number(body?.year),
       mileage: Number(body?.mileage),
-      imageUrl: String(body?.imageUrl ?? "")
+      year: Number(body?.year)
     });
 
     return NextResponse.json(car, { status: 201 });
