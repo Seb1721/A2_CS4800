@@ -93,7 +93,11 @@ Sessions are signed with `jose` and stored in an HTTP-only cookie.
 
 ## AWS Deployment
 
-The recommended deployment target for this version is `AWS Amplify Hosting`.
+This app can deploy to either `AWS Amplify Hosting` or `EC2`.
+
+Use `EC2` if you want MongoDB Atlas to allowlist one stable server IP instead of allowing access from anywhere. See [docs/ec2-deployment.md](./docs/ec2-deployment.md).
+
+Use `Amplify Hosting` if you want the simplest managed Next.js deployment and are comfortable with Atlas network access tradeoffs.
 
 This repo includes [amplify.yml](./amplify.yml), which uses:
 
