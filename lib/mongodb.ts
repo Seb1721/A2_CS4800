@@ -32,6 +32,7 @@ function getClientPromise() {
   });
   const clientPromise = client.connect().catch(async (error: unknown) => {
     global.__mongoClientPromise__ = undefined;
+    console.error("MongoDB connection failed.", error);
     await client.close().catch(() => undefined);
     throw new Error(DATABASE_UNAVAILABLE_ERROR, { cause: error });
   });
