@@ -1,6 +1,6 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
 
-const dbName = process.env.MONGODB_DB_NAME || "car_info";
+const dbName = process.env.MONGODB_DB_NAME || "carkeeper";
 const DATABASE_CONFIG_ERROR = "Database configuration is missing.";
 const DATABASE_UNAVAILABLE_ERROR = "Database unavailable.";
 

@@ -34,7 +34,7 @@ Set these values:
 
 ```bash
 MONGODB_URI=your_mongodb_connection_string
-MONGODB_DB_NAME=car_info
+MONGODB_DB_NAME=carkeeper
 AUTH_SECRET=replace_with_a_long_random_secret
 CARKEEPER_ADMIN_USER=admin
 CARKEEPER_ADMIN_PASSWORD=replace_with_a_strong_password
