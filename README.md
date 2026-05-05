@@ -39,7 +39,10 @@ AUTH_SECRET=replace_with_a_long_random_secret
 CARKEEPER_ADMIN_USER=admin
 CARKEEPER_ADMIN_EMAIL=admin@example.com
 CARKEEPER_ADMIN_PASSWORD=replace_with_a_strong_password
+NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ```
+
+`NEXT_PUBLIC_GA_ID` is your Google Analytics 4 measurement ID. Leave it blank to disable analytics for a local environment.
 
 Start development:
 
