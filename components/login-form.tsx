@@ -56,9 +56,12 @@ export function LoginForm() {
     <main className="auth-shell">
       <section className="brand-panel">
         <div className="brand-mark">CarKeeper</div>
-        <p className="brand-summary">
-          Maintenance tracking for personal vehicles, with service history and mileage in one place.
-        </p>
+        <div className="brand-subsection">
+          <div className="brand-subsection-label">Vehicle Maintenance</div>
+          <p className="brand-summary">
+            Track service history, mileage, and maintenance records in one organized workspace.
+          </p>
+        </div>
 
         <div className="feature-list">
           <div className="feature-item">
@@ -78,7 +81,6 @@ export function LoginForm() {
 
       <section className="auth-panel">
         <div className="auth-card">
-          <div className="eyebrow">Account Access</div>
           <div className="auth-switch">
             <button
               className={mode === "login" ? "switch-chip active" : "switch-chip"}
@@ -140,10 +142,16 @@ export function LoginForm() {
                 autoComplete="username"
                 id="username"
                 onChange={(event) => setUsername(event.target.value)}
+                placeholder={mode === "login" ? "Username (not email)" : "e.g. sebdriver"}
                 required
                 type="text"
                 value={username}
               />
+              <div className="field-hint">
+                {mode === "login"
+                  ? "Sign in with your username, not your email address."
+                  : "Pick a simple username people can recognize."}
+              </div>
             </div>
 
             <div className="field-group">

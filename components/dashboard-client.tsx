@@ -80,7 +80,7 @@ const emptyCarForm: CarFormState = {
   year: "",
   mileage: "",
   imageUrl: "",
-  serviceReminderRules: [createReminderRuleForm()]
+  serviceReminderRules: []
 };
 
 const emptyEditCarForm: EditCarFormState = {
@@ -89,7 +89,7 @@ const emptyEditCarForm: EditCarFormState = {
   year: "",
   mileage: "",
   imageUrl: "",
-  serviceReminderRules: [createReminderRuleForm()],
+  serviceReminderRules: [],
   allowMileageCorrection: false
 };
 
@@ -591,6 +591,10 @@ export function DashboardClient({
 
       const updatedCar = payload as CarDetails;
       syncSelectedCar(updatedCar);
+      setMileageForm({
+        ...emptyMileageForm,
+        carId: String(updatedCar.carId)
+      });
       await refreshCars();
       await refreshServerData();
       setMessage({ type: "success", text: "Mileage history updated." });
@@ -626,12 +630,12 @@ export function DashboardClient({
       }
 
       const updatedCar = payload as CarDetails;
+      syncSelectedCar(updatedCar);
       setServiceForm((current) => ({
         ...emptyServiceForm,
         carId: String(updatedCar.carId),
-        mileage: String(updatedCar.currentMileage)
+        serviceType: current.serviceType
       }));
-      syncSelectedCar(updatedCar);
       await refreshCars();
       await refreshServerData();
       setMessage({ type: "success", text: "Service record added successfully." });
@@ -893,6 +897,7 @@ export function DashboardClient({
   const dueSoonAttentionItems = attentionItems.filter((item) => item.status === "due-soon");
   const serviceFeedRows = serviceFeed ?? recentServices;
   const pageMeta = getPageMeta(view, selectedCar);
+  const showWorkspaceUser = view === "dashboard" || view === "account";
 
   return (
     <main className="workspace-shell">
@@ -904,11 +909,12 @@ export function DashboardClient({
         </div>
 
         <div className="workspace-header-side">
-          <div className="workspace-user">
-            <strong>{profile?.displayName || username}</strong>
-            <span>@{username}</span>
-            <span>{profile?.email || "No email saved"}</span>
-          </div>
+          {showWorkspaceUser ? (
+            <div className="workspace-user">
+              <strong>{profile?.displayName || username}</strong>
+              <span>{profile?.email || "No email saved"}</span>
+            </div>
+          ) : null}
           <div className="workspace-actions">
             {view !== "new-vehicle" ? (
               <Link className="btn btn-primary" href="/garage/new">
@@ -1123,7 +1129,7 @@ function DashboardHomeView({
       </section>
 
       <div className="dashboard-panels">
-        <section className="workspace-panel">
+        <section className="workspace-panel dashboard-garage-panel">
           <div className="workspace-panel-header">
             <div>
               <h2>Garage</h2>
@@ -1136,92 +1142,92 @@ function DashboardHomeView({
           {cars.length === 0 ? (
             <div className="empty-inline">No vehicles yet. Add your first vehicle to start tracking.</div>
           ) : (
-            <table className="workspace-table">
-              <thead>
-                <tr>
-                  <th>Vehicle</th>
-                  <th>Mileage</th>
-                  <th>Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cars.slice(0, 5).map((car) => (
-                  <tr key={car.carId}>
-                    <td>
-                      <button className="comparison-link" onClick={() => openVehiclePage(car.carId)} type="button">
-                        {car.carName}
-                      </button>
-                    </td>
-                    <td>{car.currentMileage.toLocaleString()} mi</td>
-                    <td>{formatCurrency(car.lifetimeExpenses)}</td>
-                  </tr>
+            <div className="dashboard-garage-list">
+              {cars.slice(0, 5).map((car) => (
+                <button
+                  className="preview-row dashboard-garage-row"
+                  key={car.carId}
+                  onClick={() => openVehiclePage(car.carId)}
+                  type="button"
+                >
+                  <span className="preview-row-stack">
+                    <span className="preview-main">{car.carName}</span>
+                    <span className="preview-sub">Last service {car.lastServiceDate}</span>
+                  </span>
+                  <span className="preview-row-stack preview-row-stack-end">
+                    <span className="preview-value">{car.currentMileage.toLocaleString()} mi</span>
+                    <span className="preview-meta">{formatCurrency(car.lifetimeExpenses)} lifetime cost</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <div className="dashboard-side-stack">
+          <section className="workspace-panel dashboard-watch-panel">
+            <div className="workspace-panel-header">
+              <div>
+                <h2>Maintenance Watch</h2>
+                <p>Vehicles needing attention now.</p>
+              </div>
+            </div>
+            {attentionItems.length === 0 ? (
+              <div className="empty-inline">Everything is currently on schedule.</div>
+            ) : (
+              <div className="watch-preview-list">
+                {[...overdueAttentionItems, ...dueSoonAttentionItems].slice(0, 6).map((item) => (
+                  <button
+                    className="preview-row"
+                    key={`${item.carId}-${item.serviceType}`}
+                    onClick={() => openVehiclePage(item.carId)}
+                    type="button"
+                  >
+                    <span className="preview-row-stack">
+                      <span className="preview-main">{item.carName}</span>
+                      <span className="preview-sub">{item.serviceType}</span>
+                    </span>
+                    <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
+                      {item.status === "overdue" ? "Overdue" : "Due Soon"}
+                    </span>
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              </div>
+            )}
+          </section>
 
-        <section className="workspace-panel">
-          <div className="workspace-panel-header">
-            <div>
-              <h2>Maintenance Watch</h2>
-              <p>Vehicles needing attention now.</p>
+          <section className="workspace-panel dashboard-service-panel">
+            <div className="workspace-panel-header">
+              <div>
+                <h2>Recent Service</h2>
+                <p>Latest work logged across your garage.</p>
+              </div>
+              <Link className="section-link" href="/services">
+                View All
+              </Link>
             </div>
-          </div>
-          {attentionItems.length === 0 ? (
-            <div className="empty-inline">Everything is currently on schedule.</div>
-          ) : (
-            <div className="watch-preview-list">
-              {[...overdueAttentionItems, ...dueSoonAttentionItems].slice(0, 6).map((item) => (
-                <button
-                  className="preview-row"
-                  key={`${item.carId}-${item.serviceType}`}
-                  onClick={() => openVehiclePage(item.carId)}
-                  type="button"
-                >
-                  <span className="preview-main">
-                    {item.carName} · {item.serviceType}
-                  </span>
-                  <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
-                    {item.status === "overdue" ? "Overdue" : "Due Soon"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="workspace-panel">
-          <div className="workspace-panel-header">
-            <div>
-              <h2>Recent Service</h2>
-              <p>Latest work logged across your garage.</p>
-            </div>
-            <Link className="section-link" href="/services">
-              View All
-            </Link>
-          </div>
-          {recentServices.length === 0 ? (
-            <div className="empty-inline">Recent service activity will appear here once you log maintenance.</div>
-          ) : (
-            <div className="preview-list">
-              {recentServices.slice(0, 6).map((service) => (
-                <button
-                  className="preview-row preview-row-stack"
-                  key={`${service.carId}-${service.serviceId}`}
-                  onClick={() => openVehiclePage(service.carId)}
-                  type="button"
-                >
-                  <span className="preview-main">{service.serviceType}</span>
-                  <span className="preview-sub">{service.carName}</span>
-                  <span className="preview-meta">
-                    {service.date} · {service.mileage.toLocaleString()} mi · {formatCurrency(service.cost)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+            {recentServices.length === 0 ? (
+              <div className="empty-inline">Recent service activity will appear here once you log maintenance.</div>
+            ) : (
+              <div className="preview-list">
+                {recentServices.slice(0, 6).map((service) => (
+                  <button
+                    className="preview-row preview-row-stack"
+                    key={`${service.carId}-${service.serviceId}`}
+                    onClick={() => openVehiclePage(service.carId)}
+                    type="button"
+                  >
+                    <span className="preview-main">{service.serviceType}</span>
+                    <span className="preview-sub">{service.carName}</span>
+                    <span className="preview-meta">
+                      {service.date} - {service.mileage.toLocaleString()} mi - {formatCurrency(service.cost)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -1259,56 +1265,47 @@ function GarageIndexView({
         <div className="workspace-panel-header">
           <div>
             <h2>All Vehicles</h2>
-            <p>Open records to update mileage, services, or vehicle details.</p>
+            <p>Open records to update mileage, service history, or vehicle details.</p>
           </div>
         </div>
         {cars.length === 0 ? (
           <div className="empty-inline">No vehicles yet. Use Add Vehicle to create your first record.</div>
         ) : (
-          <table className="workspace-table">
-            <thead>
-              <tr>
-                <th>Vehicle</th>
-                <th>ID</th>
-                <th>Mileage</th>
-                <th>Services</th>
-                <th>Lifetime Cost</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cars.map((car) => {
-                const reminder = attentionItems.find((item) => item.carId === car.carId);
-                return (
-                  <tr key={car.carId}>
-                    <td>{car.carName}</td>
-                    <td>{car.carId}</td>
-                    <td>{car.currentMileage.toLocaleString()} mi</td>
-                    <td>{car.serviceCount}</td>
-                    <td>{formatCurrency(car.lifetimeExpenses)}</td>
-                    <td>
-                      {reminder ? (
-                        <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
-                          {reminder.serviceType}
-                        </span>
-                      ) : (
-                        <span className="comparison-status ok">On schedule</span>
-                      )}
-                    </td>
-                    <td className="table-actions">
-                      <button className="btn btn-inline" onClick={() => openVehiclePage(car.carId)} type="button">
-                        Records
-                      </button>
-                      <button className="btn btn-inline" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
-                        Insights
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="garage-card-grid">
+            {cars.map((car) => {
+              const reminder = attentionItems.find((item) => item.carId === car.carId);
+              return (
+                <article className="garage-card" key={car.carId}>
+                  <div className="garage-card-top">
+                    <div>
+                      <div className="garage-card-title">{car.carName}</div>
+                      <div className="garage-card-subtitle">{car.currentMileage.toLocaleString()} mi</div>
+                    </div>
+                    {reminder ? (
+                      <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
+                        {reminder.serviceType}
+                      </span>
+                    ) : (
+                      <span className="comparison-status ok">On schedule</span>
+                    )}
+                  </div>
+                  <div className="garage-card-meta">
+                    <span>{car.serviceCount} service records</span>
+                    <span>{formatCurrency(car.lifetimeExpenses)} lifetime cost</span>
+                    <span>Last service {car.lastServiceDate}</span>
+                  </div>
+                  <div className="garage-card-actions">
+                    <button className="btn btn-inline" onClick={() => openVehiclePage(car.carId)} type="button">
+                      Open Records
+                    </button>
+                    <button className="btn btn-inline" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
+                      Open Insights
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
     </div>
@@ -1340,7 +1337,7 @@ function VehicleCreateView({
       <div className="workspace-panel-header">
         <div>
           <h2>New Vehicle</h2>
-          <p>Create the vehicle profile first, then maintain its mileage and service records from the vehicle page.</p>
+          <p>Create the vehicle profile first. Mileage and service history stay as separate actions later.</p>
         </div>
       </div>
 
@@ -1436,7 +1433,7 @@ function ServicesIndexView({
       <div className="workspace-panel-header">
         <div>
           <h2>Service Records</h2>
-          <p>Open the vehicle record to edit or correct any entry.</p>
+          <p>Open the vehicle record to update, correct, or delete service history.</p>
         </div>
       </div>
       {services.length === 0 ? (
@@ -1537,8 +1534,16 @@ function AccountWorkspaceView({
         </div>
         <dl className="detail-list">
           <div>
+            <dt>Name</dt>
+            <dd>{profile?.displayName ?? "Unavailable"}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{profile?.email ?? "Unavailable"}</dd>
+          </div>
+          <div>
             <dt>Username</dt>
-            <dd>@{username}</dd>
+            <dd>{username}</dd>
           </div>
           <div>
             <dt>User ID</dt>
@@ -1657,7 +1662,7 @@ function VehicleWorkspaceView({
         <OverviewCard label="Lifetime Expenses" value={formatCurrency(car.lifetimeExpenses)} />
       </section>
 
-      <section className="workspace-panel">
+      <section className="workspace-panel vehicle-summary-panel">
         <div className="workspace-panel-header">
           <div>
             <h2>{car.carName}</h2>
@@ -1679,16 +1684,16 @@ function VehicleWorkspaceView({
             ))}
           </div>
         ) : (
-          <div className="empty-inline">No reminder rules are configured for this vehicle.</div>
+          <div className="empty-inline">No mileage reminders are configured for this vehicle.</div>
         )}
       </section>
 
-      <div className="records-grid">
-        <section className="workspace-panel">
+      <div className="records-grid vehicle-action-grid">
+        <section className="workspace-panel compact-panel">
           <div className="workspace-panel-header">
             <div>
               <h2>Update Mileage</h2>
-              <p>Add a new mileage entry.</p>
+              <p>Add a mileage entry without changing service history.</p>
             </div>
           </div>
           <form className="form-grid" onSubmit={handleUpdateMileage}>
@@ -1738,11 +1743,11 @@ function VehicleWorkspaceView({
           </form>
         </section>
 
-        <section className="workspace-panel">
+        <section className="workspace-panel compact-panel">
           <div className="workspace-panel-header">
             <div>
               <h2>Add Service</h2>
-              <p>Log a service record for this vehicle.</p>
+              <p>Log a service record separately from the vehicle profile.</p>
             </div>
           </div>
           <form className="form-grid" onSubmit={handleAddService}>
@@ -1822,235 +1827,237 @@ function VehicleWorkspaceView({
         </section>
       </div>
 
-      <section className="workspace-panel">
-        <div className="workspace-panel-header">
-          <div>
-            <h2>Service History</h2>
-            <p>Edit or delete incorrect records.</p>
+      <div className="records-grid vehicle-records-grid">
+        <section className="workspace-panel workspace-record-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Service History</h2>
+              <p>Edit or delete incorrect records.</p>
+            </div>
           </div>
-        </div>
-        {car.serviceHistory.length === 0 ? (
-          <div className="empty-inline">No service records yet.</div>
-        ) : (
+          {car.serviceHistory.length === 0 ? (
+            <div className="empty-inline">No service records yet.</div>
+          ) : (
+            <table className="workspace-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Mileage</th>
+                  <th>Cost</th>
+                  <th>Description</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {car.serviceHistory.map((service) => (
+                  <tr key={service.serviceId}>
+                    <td>{service.date}</td>
+                    <td>{service.serviceType}</td>
+                    <td>{service.mileage.toLocaleString()} mi</td>
+                    <td>{formatCurrency(service.cost)}</td>
+                    <td>{service.description || "N/A"}</td>
+                    <td className="table-actions">
+                      <button className="btn btn-inline" onClick={() => startEditingService(service)} type="button">
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-inline-danger"
+                        disabled={deletingServiceId === service.serviceId}
+                        onClick={() => void handleDeleteService(service.serviceId)}
+                        type="button"
+                      >
+                        {deletingServiceId === service.serviceId ? "Deleting..." : "Delete"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {editingServiceId !== null ? (
+            <form className="form-grid inline-edit-form" onSubmit={handleSaveServiceEdit}>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor="editServiceDate">Service Date</label>
+                  <input
+                    id="editServiceDate"
+                    onChange={(event) => updateEditServiceField("serviceDate", event.target.value)}
+                    required
+                    type="date"
+                    value={editServiceForm.serviceDate}
+                  />
+                </div>
+                <div className="field-group">
+                  <label htmlFor="editServiceMileage">Mileage</label>
+                  <input
+                    id="editServiceMileage"
+                    min="0"
+                    onChange={(event) => updateEditServiceField("mileage", event.target.value)}
+                    required
+                    type="number"
+                    value={editServiceForm.mileage}
+                  />
+                </div>
+              </div>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor="editServiceType">Service Type</label>
+                  <select
+                    id="editServiceType"
+                    onChange={(event) => updateEditServiceField("serviceType", event.target.value)}
+                    value={editServiceForm.serviceType}
+                  >
+                    {serviceTypes.map((serviceType) => (
+                      <option key={serviceType} value={serviceType}>
+                        {serviceType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label htmlFor="editServiceCost">Cost</label>
+                  <input
+                    id="editServiceCost"
+                    min="0"
+                    onChange={(event) => updateEditServiceField("cost", event.target.value)}
+                    step="0.01"
+                    type="number"
+                    value={editServiceForm.cost}
+                  />
+                </div>
+              </div>
+              <div className="field-group">
+                <label htmlFor="editServiceDescription">Description</label>
+                <input
+                  id="editServiceDescription"
+                  onChange={(event) => updateEditServiceField("description", event.target.value)}
+                  type="text"
+                  value={editServiceForm.description}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="editServiceNotes">Notes</label>
+                <textarea
+                  id="editServiceNotes"
+                  onChange={(event) => updateEditServiceField("notes", event.target.value)}
+                  rows={3}
+                  value={editServiceForm.notes}
+                />
+              </div>
+              <div className="action-row">
+                <button className="btn btn-primary" disabled={isSavingService} type="submit">
+                  {isSavingService ? "Saving..." : "Save Service Changes"}
+                </button>
+                <button className="btn btn-secondary" onClick={cancelEditingService} type="button">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
+
+        <section className="workspace-panel workspace-record-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Mileage Log</h2>
+              <p>Edit manual mileage entries when needed.</p>
+            </div>
+          </div>
           <table className="workspace-table">
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Category</th>
                 <th>Mileage</th>
-                <th>Cost</th>
-                <th>Description</th>
+                <th>Source</th>
+                <th>Notes</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {car.serviceHistory.map((service) => (
-                <tr key={service.serviceId}>
-                  <td>{service.date}</td>
-                  <td>{service.serviceType}</td>
-                  <td>{service.mileage.toLocaleString()} mi</td>
-                  <td>{formatCurrency(service.cost)}</td>
-                  <td>{service.description || "N/A"}</td>
+              {car.mileageHistory.map((entry) => (
+                <tr key={entry.entryId}>
+                  <td>{entry.date}</td>
+                  <td>{entry.mileage.toLocaleString()} mi</td>
+                  <td>{formatSourceLabel(entry.source)}</td>
+                  <td>{entry.notes}</td>
                   <td className="table-actions">
-                    <button className="btn btn-inline" onClick={() => startEditingService(service)} type="button">
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-inline-danger"
-                      disabled={deletingServiceId === service.serviceId}
-                      onClick={() => void handleDeleteService(service.serviceId)}
-                      type="button"
-                    >
-                      {deletingServiceId === service.serviceId ? "Deleting..." : "Delete"}
-                    </button>
+                    {entry.canEdit ? (
+                      <button className="btn btn-inline" onClick={() => startEditingMileageEntry(entry)} type="button">
+                        Edit
+                      </button>
+                    ) : null}
+                    {entry.canDelete ? (
+                      <button
+                        className="btn btn-inline-danger"
+                        disabled={deletingMileageEntryId === entry.entryId}
+                        onClick={() => void handleDeleteMileageEntry(entry.entryId)}
+                        type="button"
+                      >
+                        {deletingMileageEntryId === entry.entryId ? "Deleting..." : "Delete"}
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
 
-        {editingServiceId !== null ? (
-          <form className="form-grid inline-edit-form" onSubmit={handleSaveServiceEdit}>
-            <div className="field-row">
+          {editingMileageEntryId !== null ? (
+            <form className="form-grid inline-edit-form" onSubmit={handleSaveMileageEntryEdit}>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor="editMileageEntryDate">Entry Date</label>
+                  <input
+                    id="editMileageEntryDate"
+                    onChange={(event) => updateEditMileageEntryField("date", event.target.value)}
+                    required
+                    type="date"
+                    value={editMileageEntryForm.date}
+                  />
+                </div>
+                <div className="field-group">
+                  <label htmlFor="editMileageEntryValue">Mileage</label>
+                  <input
+                    id="editMileageEntryValue"
+                    min="0"
+                    onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
+                    required
+                    type="number"
+                    value={editMileageEntryForm.mileage}
+                  />
+                </div>
+              </div>
               <div className="field-group">
-                <label htmlFor="editServiceDate">Service Date</label>
-                <input
-                  id="editServiceDate"
-                  onChange={(event) => updateEditServiceField("serviceDate", event.target.value)}
-                  required
-                  type="date"
-                  value={editServiceForm.serviceDate}
+                <label htmlFor="editMileageEntryNotes">Notes</label>
+                <textarea
+                  id="editMileageEntryNotes"
+                  onChange={(event) => updateEditMileageEntryField("notes", event.target.value)}
+                  rows={3}
+                  value={editMileageEntryForm.notes}
                 />
               </div>
-              <div className="field-group">
-                <label htmlFor="editServiceMileage">Mileage</label>
+              <label className="checkbox-row">
                 <input
-                  id="editServiceMileage"
-                  min="0"
-                  onChange={(event) => updateEditServiceField("mileage", event.target.value)}
-                  required
-                  type="number"
-                  value={editServiceForm.mileage}
+                  checked={editMileageEntryForm.allowCorrection}
+                  onChange={(event) => updateEditMileageEntryField("allowCorrection", event.target.checked)}
+                  type="checkbox"
                 />
+                <span>Allow a lower mileage if this edit is a correction.</span>
+              </label>
+              <div className="action-row">
+                <button className="btn btn-primary" disabled={isSavingMileageEntry} type="submit">
+                  {isSavingMileageEntry ? "Saving..." : "Save Mileage Entry"}
+                </button>
+                <button className="btn btn-secondary" onClick={cancelEditingMileageEntry} type="button">
+                  Cancel
+                </button>
               </div>
-            </div>
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="editServiceType">Service Type</label>
-                <select
-                  id="editServiceType"
-                  onChange={(event) => updateEditServiceField("serviceType", event.target.value)}
-                  value={editServiceForm.serviceType}
-                >
-                  {serviceTypes.map((serviceType) => (
-                    <option key={serviceType} value={serviceType}>
-                      {serviceType}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field-group">
-                <label htmlFor="editServiceCost">Cost</label>
-                <input
-                  id="editServiceCost"
-                  min="0"
-                  onChange={(event) => updateEditServiceField("cost", event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={editServiceForm.cost}
-                />
-              </div>
-            </div>
-            <div className="field-group">
-              <label htmlFor="editServiceDescription">Description</label>
-              <input
-                id="editServiceDescription"
-                onChange={(event) => updateEditServiceField("description", event.target.value)}
-                type="text"
-                value={editServiceForm.description}
-              />
-            </div>
-            <div className="field-group">
-              <label htmlFor="editServiceNotes">Notes</label>
-              <textarea
-                id="editServiceNotes"
-                onChange={(event) => updateEditServiceField("notes", event.target.value)}
-                rows={3}
-                value={editServiceForm.notes}
-              />
-            </div>
-            <div className="action-row">
-              <button className="btn btn-primary" disabled={isSavingService} type="submit">
-                {isSavingService ? "Saving..." : "Save Service Changes"}
-              </button>
-              <button className="btn btn-secondary" onClick={cancelEditingService} type="button">
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="workspace-panel">
-        <div className="workspace-panel-header">
-          <div>
-            <h2>Mileage Log</h2>
-            <p>Edit manual mileage entries when needed.</p>
-          </div>
-        </div>
-        <table className="workspace-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Mileage</th>
-              <th>Source</th>
-              <th>Notes</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {car.mileageHistory.map((entry) => (
-              <tr key={entry.entryId}>
-                <td>{entry.date}</td>
-                <td>{entry.mileage.toLocaleString()} mi</td>
-                <td>{formatSourceLabel(entry.source)}</td>
-                <td>{entry.notes}</td>
-                <td className="table-actions">
-                  {entry.canEdit ? (
-                    <button className="btn btn-inline" onClick={() => startEditingMileageEntry(entry)} type="button">
-                      Edit
-                    </button>
-                  ) : null}
-                  {entry.canDelete ? (
-                    <button
-                      className="btn btn-inline-danger"
-                      disabled={deletingMileageEntryId === entry.entryId}
-                      onClick={() => void handleDeleteMileageEntry(entry.entryId)}
-                      type="button"
-                    >
-                      {deletingMileageEntryId === entry.entryId ? "Deleting..." : "Delete"}
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {editingMileageEntryId !== null ? (
-          <form className="form-grid inline-edit-form" onSubmit={handleSaveMileageEntryEdit}>
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="editMileageEntryDate">Entry Date</label>
-                <input
-                  id="editMileageEntryDate"
-                  onChange={(event) => updateEditMileageEntryField("date", event.target.value)}
-                  required
-                  type="date"
-                  value={editMileageEntryForm.date}
-                />
-              </div>
-              <div className="field-group">
-                <label htmlFor="editMileageEntryValue">Mileage</label>
-                <input
-                  id="editMileageEntryValue"
-                  min="0"
-                  onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
-                  required
-                  type="number"
-                  value={editMileageEntryForm.mileage}
-                />
-              </div>
-            </div>
-            <div className="field-group">
-              <label htmlFor="editMileageEntryNotes">Notes</label>
-              <textarea
-                id="editMileageEntryNotes"
-                onChange={(event) => updateEditMileageEntryField("notes", event.target.value)}
-                rows={3}
-                value={editMileageEntryForm.notes}
-              />
-            </div>
-            <label className="checkbox-row">
-              <input
-                checked={editMileageEntryForm.allowCorrection}
-                onChange={(event) => updateEditMileageEntryField("allowCorrection", event.target.checked)}
-                type="checkbox"
-              />
-              <span>Allow a lower mileage if this edit is a correction.</span>
-            </label>
-            <div className="action-row">
-              <button className="btn btn-primary" disabled={isSavingMileageEntry} type="submit">
-                {isSavingMileageEntry ? "Saving..." : "Save Mileage Entry"}
-              </button>
-              <button className="btn btn-secondary" onClick={cancelEditingMileageEntry} type="button">
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : null}
-      </section>
+            </form>
+          ) : null}
+        </section>
+      </div>
 
       <section className="workspace-panel">
         <div className="workspace-panel-header">
@@ -2379,8 +2386,8 @@ function ReminderRuleEditor({
     <div className="field-group">
       <div className="detail-section-heading reminder-editor-heading">
         <div>
-          <label>Reminder Rules</label>
-          <p>Configure only the service categories you want CarKeeper to monitor.</p>
+          <label>Mileage Reminders</label>
+          <p>Optional. Track only the service categories you want monitored by mileage.</p>
         </div>
         <button
           className="btn btn-inline"
@@ -2394,7 +2401,7 @@ function ReminderRuleEditor({
 
       {rules.length === 0 ? (
         <div className="service-card">
-          <div className="service-notes muted-text">No reminder rules configured yet.</div>
+          <div className="service-notes muted-text">No mileage reminders configured yet.</div>
         </div>
       ) : (
         <div className="reminder-editor-list">
@@ -2432,21 +2439,7 @@ function ReminderRuleEditor({
                 </div>
               </div>
 
-              <div className="field-row">
-                <div className="field-group">
-                  <label htmlFor={`${prefix}ReminderDays-${index}`}>Interval Days</label>
-                  <input
-                    id={`${prefix}ReminderDays-${index}`}
-                    min="1"
-                    onChange={(event) =>
-                      onUpdateRule(mode, index, "intervalDays", event.target.value)
-                    }
-                    required
-                    type="number"
-                    value={rule.intervalDays}
-                  />
-                </div>
-                <div className="field-group reminder-editor-actions">
+              <div className="field-group reminder-editor-actions">
                   <span className="reminder-rule-hint">
                     {rule.serviceType} will be tracked against its latest matching service record.
                   </span>
@@ -2457,7 +2450,6 @@ function ReminderRuleEditor({
                   >
                     Remove Rule
                   </button>
-                </div>
               </div>
             </div>
           ))}
@@ -2531,7 +2523,7 @@ function ReminderStatusCard({
         <div>
           <div className="reminder-rule-title">{reminder.serviceType}</div>
           <div className="reminder-rule-copy">
-            Every {reminder.intervalMiles.toLocaleString()} miles or {reminder.intervalDays} days
+            Every {reminder.intervalMiles.toLocaleString()} miles
           </div>
         </div>
         <div className={`comparison-status ${reminder.needsAttention ? "warning" : "ok"}`}>
@@ -2558,7 +2550,6 @@ function ReminderStatusCard({
           Miles until due:{" "}
           {reminder.milesUntilDue === null ? "N/A" : `${reminder.milesUntilDue.toLocaleString()} mi`}
         </span>
-        <span>Days until due: {reminder.daysUntilDue === null ? "N/A" : reminder.daysUntilDue}</span>
       </div>
 
       {reminder.needsAttention ? (
