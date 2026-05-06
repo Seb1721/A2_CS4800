@@ -196,12 +196,12 @@ textarea {
 .auth-shell {
   align-items: stretch;
   display: grid;
-  grid-template-columns: minmax(340px, 1.02fr) minmax(340px, 0.9fr);
+  grid-template-columns: minmax(360px, 1.06fr) minmax(360px, 0.94fr);
   gap: 0;
   margin: 0 auto;
   min-height: 100vh;
   padding: 36px 20px;
-  width: min(1080px, 100%);
+  width: min(1220px, 100%);
 }
 
 .brand-panel {
@@ -1379,7 +1379,7 @@ textarea {
   background: #8d271f;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 920px) {
   .auth-shell,
   .dashboard-grid,
   .result-header {

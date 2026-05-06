@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 
+import { AnalyticsTracker } from "@/components/analytics-tracker";
+
 export const metadata: Metadata = {
   title: "CarKeeper",
   description: "Secure vehicle tracking with Next.js and MongoDB."
@@ -20,6 +22,7 @@ export default function RootLayout({
         {children}
         {googleAnalyticsId ? (
           <>
+            <AnalyticsTracker />
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
               strategy="afterInteractive"
@@ -29,7 +32,7 @@ export default function RootLayout({
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
-                gtag('config', '${googleAnalyticsId}');
+                gtag('config', '${googleAnalyticsId}', { send_page_view: false });
               `}
             </Script>
           </>

@@ -9,15 +9,15 @@ export async function POST(request: Request) {
     await ensureAppSetup();
 
     const body = await request.json().catch(() => null);
-    const username = String(body?.username ?? "").trim().toLowerCase();
+    const identifier = String(body?.username ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
 
-    if (!username || !password) {
-      return NextResponse.json({ error: "Username and password are required." }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json({ error: "Username or email and password are required." }, { status: 400 });
     }
 
-    const isValid = await verifyPassword(username, password);
-    if (!isValid) {
+    const username = await verifyPassword(identifier, password);
+    if (!username) {
       return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
     }
 

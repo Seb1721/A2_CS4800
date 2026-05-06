@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { trackEvent } from "@/lib/analytics";
+
 type Mode = "login" | "register";
 
 export function LoginForm() {
@@ -43,6 +45,9 @@ export function LoginForm() {
         throw new Error(serverError || "Authentication failed.");
       }
 
+      trackEvent(mode === "login" ? "login_success" : "sign_up", {
+        identifier_type: username.includes("@") ? "email" : "username"
+      });
       router.push("/");
       router.refresh();
     } catch (submitError) {
@@ -142,14 +147,14 @@ export function LoginForm() {
                 autoComplete="username"
                 id="username"
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder={mode === "login" ? "Username (not email)" : "e.g. sebdriver"}
+                placeholder={mode === "login" ? "Username or email" : "e.g. sebdriver"}
                 required
                 type="text"
                 value={username}
               />
               <div className="field-hint">
                 {mode === "login"
-                  ? "Sign in with your username, not your email address."
+                  ? "You can sign in with either your username or your email address."
                   : "Pick a simple username people can recognize."}
               </div>
             </div>

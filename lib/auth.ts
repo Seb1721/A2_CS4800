@@ -66,17 +66,20 @@ export async function createUser(
   return username;
 }
 
-export async function verifyPassword(usernameInput: string, password: string) {
-  const username = usernameInput.trim().toLowerCase();
+export async function verifyPassword(identifierInput: string, password: string) {
+  const identifier = identifierInput.trim().toLowerCase();
   const db = await getDatabase();
   const users = db.collection<UserRecord>("users");
-  const user = await users.findOne({ username });
+  const user = await users.findOne({
+    $or: [{ username: identifier }, { email: identifier }]
+  });
 
   if (!user) {
-    return false;
+    return null;
   }
 
-  return compare(password, user.passwordHash);
+  const isValid = await compare(password, user.passwordHash);
+  return isValid ? user.username : null;
 }
 
 export async function createSession(username: string) {

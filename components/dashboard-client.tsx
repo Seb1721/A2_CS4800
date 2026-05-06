@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SyntheticEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { trackEvent } from "@/lib/analytics";
 import {
   buildExpenseByCategory,
   buildExpenseTrend,
@@ -464,6 +465,11 @@ export function DashboardClient({
       syncSelectedCar(createdCar);
       await refreshCars();
       await refreshServerData();
+      trackEvent("vehicle_created", {
+        car_id: createdCar.carId,
+        make: createdCar.make,
+        year: createdCar.year
+      });
       if (view === "new-vehicle") {
         router.push(`/garage/${createdCar.carId}`);
         return;
@@ -597,6 +603,10 @@ export function DashboardClient({
       });
       await refreshCars();
       await refreshServerData();
+      trackEvent("mileage_entry_added", {
+        car_id: updatedCar.carId,
+        mileage: Number(mileageForm.mileage)
+      });
       setMessage({ type: "success", text: "Mileage history updated." });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not update mileage." });
@@ -638,6 +648,11 @@ export function DashboardClient({
       }));
       await refreshCars();
       await refreshServerData();
+      trackEvent("service_added", {
+        car_id: updatedCar.carId,
+        service_type: serviceForm.serviceType,
+        mileage: Number(serviceForm.mileage)
+      });
       setMessage({ type: "success", text: "Service record added successfully." });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not add service." });
@@ -814,6 +829,7 @@ export function DashboardClient({
     setIsLoggingOut(true);
 
     try {
+      trackEvent("logout", { location: view });
       await fetch("/api/auth/logout", { method: "POST" });
       router.push("/login");
       router.refresh();
@@ -846,6 +862,7 @@ export function DashboardClient({
 
       setProfile(payload as UserProfile);
       await refreshServerData();
+      trackEvent("profile_updated");
       setMessage({ type: "success", text: "Account profile updated." });
     } catch (error) {
       setMessage({
