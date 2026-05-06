@@ -14,6 +14,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordStrength = getPasswordStrength(password);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,9 +55,10 @@ export function LoginForm() {
   return (
     <main className="auth-shell">
       <section className="brand-panel">
-        <div className="eyebrow">CarKeeper</div>
-        <h1>Vehicle records, without the clutter.</h1>
-        <p>Sign in to manage mileage, service history, and maintenance planning in one place.</p>
+        <div className="brand-mark">CarKeeper</div>
+        <p className="brand-summary">
+          Maintenance tracking for personal vehicles, with service history and mileage in one place.
+        </p>
 
         <div className="feature-list">
           <div className="feature-item">
@@ -72,6 +74,7 @@ export function LoginForm() {
 
       <section className="auth-panel">
         <div className="auth-card">
+          <div className="eyebrow">Account Access</div>
           <div className="auth-switch">
             <button
               className={mode === "login" ? "switch-chip active" : "switch-chip"}
@@ -144,12 +147,20 @@ export function LoginForm() {
               <input
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 id="password"
-                minLength={8}
+                minLength={12}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 type="password"
                 value={password}
               />
+              {mode === "register" ? (
+                <div className="password-guidance">
+                  <span className={`password-strength password-strength-${passwordStrength.tone}`}>
+                    {passwordStrength.label}
+                  </span>
+                  <span>Use at least 12 characters with a mix of uppercase, lowercase, numbers, and symbols.</span>
+                </div>
+              ) : null}
             </div>
 
             <button className="btn btn-primary" disabled={isSubmitting} type="submit">
@@ -164,4 +175,42 @@ export function LoginForm() {
       </section>
     </main>
   );
+}
+
+function getPasswordStrength(password: string) {
+  if (!password) {
+    return { label: "Use a strong password", tone: "neutral" as const };
+  }
+
+  let score = 0;
+
+  if (password.length >= 12) {
+    score += 1;
+  }
+
+  if (password.length >= 16) {
+    score += 1;
+  }
+
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) {
+    score += 1;
+  }
+
+  if (/\d/.test(password)) {
+    score += 1;
+  }
+
+  if (/[^A-Za-z0-9]/.test(password)) {
+    score += 1;
+  }
+
+  if (score <= 2) {
+    return { label: "Weak password", tone: "weak" as const };
+  }
+
+  if (score === 3 || score === 4) {
+    return { label: "Good password", tone: "good" as const };
+  }
+
+  return { label: "Strong password", tone: "strong" as const };
 }

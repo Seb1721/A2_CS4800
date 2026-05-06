@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { SyntheticEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   buildExpenseByCategory,
@@ -144,6 +144,8 @@ export function DashboardClient({
   view = "dashboard"
 }: DashboardClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const didMountRef = useRef(false);
   const [cars, setCars] = useState(initialCars);
   const [overview, setOverview] = useState(initialOverview);
   const [recentServices, setRecentServices] = useState(initialRecentServices);
@@ -213,6 +215,15 @@ export function DashboardClient({
     setTrendDateTo("");
     setTrendServiceTypeFilter("all");
   }, [selectedCar?.carId]);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    router.refresh();
+  }, [pathname, router]);
 
   function updateCarField(field: keyof CarFormState, value: string | ReminderRuleForm[]) {
     setCarForm((current) => ({ ...current, [field]: value }));

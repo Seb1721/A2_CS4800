@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Unable to create account.";
     const status =
       message === "Username must be at least 3 characters." ||
-      message === "Password must be at least 8 characters." ||
+      message === "Password must be at least 12 characters." ||
       message === "Enter a valid email address." ||
       message === "That username is already taken." ||
       message === "That email address is already in use."
