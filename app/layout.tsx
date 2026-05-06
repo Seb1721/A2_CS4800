@@ -6,7 +6,10 @@ import { AnalyticsTracker } from "@/components/analytics-tracker";
 
 export const metadata: Metadata = {
   title: "CarKeeper",
-  description: "Secure vehicle tracking with Next.js and MongoDB."
+  description: "Secure vehicle tracking with Next.js and MongoDB.",
+  icons: {
+    icon: "/icon.svg"
+  }
 };
 
 const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_ID;

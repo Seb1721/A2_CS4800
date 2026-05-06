@@ -60,26 +60,23 @@ export function LoginForm() {
   return (
     <main className="auth-shell">
       <section className="brand-panel">
-        <div className="brand-mark">CarKeeper</div>
-        <div className="brand-subsection">
-          <div className="brand-subsection-label">Vehicle Maintenance</div>
-          <p className="brand-summary">
-            Track service history, mileage, and maintenance records in one organized workspace.
-          </p>
+        <div className="brand-lockup">
+          <div className="brand-mark">CarKeeper</div>
+          <div className="brand-subheader">Maintenance made easy</div>
         </div>
 
         <div className="feature-list">
           <div className="feature-item">
-            <strong>Private by default</strong>
-            <span>Each garage stays tied to its owner account.</span>
-          </div>
-          <div className="feature-item">
             <strong>Clear maintenance view</strong>
-            <span>Recent service, reminders, and mileage live in one workflow.</span>
+            <span>Track service history, reminders, and mileage in one organized workflow.</span>
           </div>
           <div className="feature-item">
             <strong>Built for everyday use</strong>
             <span>Open the dashboard, update the record, and move on.</span>
+          </div>
+          <div className="feature-item">
+            <strong>Analytics</strong>
+            <span>Trends, costs, and overall garage activity all in one place.</span>
           </div>
         </div>
       </section>

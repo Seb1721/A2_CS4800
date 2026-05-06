@@ -199,8 +199,8 @@ textarea {
   grid-template-columns: minmax(360px, 1.06fr) minmax(360px, 0.94fr);
   gap: 0;
   margin: 0 auto;
-  min-height: 100vh;
-  padding: 36px 20px;
+  min-height: min(760px, calc(100vh - 56px));
+  padding: 22px 20px;
   width: min(1220px, 100%);
 }
 
@@ -214,11 +214,12 @@ textarea {
   border-right: none;
   color: #f4efe7;
   display: grid;
-  align-content: start;
+  align-content: center;
+  justify-items: center;
   gap: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 34px 32px;
+  padding: 26px 30px;
   position: relative;
 }
 
@@ -233,39 +234,31 @@ textarea {
   width: auto;
 }
 
+.brand-lockup {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  width: max-content;
+}
+
 .brand-mark {
   color: #f8f4ec;
   font-size: clamp(38px, 4.7vw, 58px);
   font-weight: 800;
   letter-spacing: -0.06em;
   line-height: 0.95;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
+  margin-top: 0;
 }
 
-.brand-subsection {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: 3px solid rgba(219, 169, 92, 0.72);
-  border-radius: 12px;
-  max-width: 390px;
-  padding: 14px 16px;
-}
-
-.brand-subsection-label {
+.brand-subheader {
   color: rgba(244, 233, 215, 0.88);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  margin-bottom: 6px;
+  letter-spacing: 0.1em;
+  margin: 0 0 20px;
+  text-align: center;
   text-transform: uppercase;
-}
-
-.brand-summary {
-  color: rgba(236, 240, 244, 0.82);
-  font-size: 14px;
-  line-height: 1.65;
-  margin: 0;
-  max-width: 360px;
 }
 
 .eyebrow {
@@ -299,17 +292,19 @@ textarea {
 
 .feature-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 16px;
-  max-width: 460px;
+  margin-top: 20px;
+  max-width: 390px;
+  width: 100%;
 }
 
 .feature-item {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 12px 14px;
+  text-align: center;
+  padding: 9px 11px;
 }
 
 .feature-item:last-child {
@@ -319,23 +314,23 @@ textarea {
 .feature-item strong {
   color: #f2eee8;
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.02em;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .feature-item span {
   color: rgba(227, 232, 237, 0.72);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .auth-panel {
   align-items: stretch;
   background:
-    linear-gradient(180deg, rgba(243, 240, 234, 0.98), rgba(233, 228, 220, 0.98));
+    linear-gradient(180deg, rgba(233, 226, 216, 0.99), rgba(223, 214, 201, 0.99));
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
-  border: 1px solid #d2cabd;
+  border: 1px solid #c4b8a8;
   border-left: none;
   display: grid;
   padding: 0;
@@ -351,21 +346,24 @@ textarea {
 }
 
 .auth-card {
-  align-content: start;
+  align-content: center;
   background: transparent;
   border: none;
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
   box-shadow: none;
   display: grid;
+  gap: 0;
+  justify-items: center;
   min-height: 100%;
-  padding: 34px 32px;
+  padding: 26px 30px 22px;
 }
 
 .auth-card h2 {
   color: #172431;
   font-size: 28px;
   letter-spacing: -0.03em;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
+  text-align: center;
 }
 
 .auth-card p {
@@ -373,12 +371,13 @@ textarea {
   font-size: 14px;
   line-height: 1.55;
   margin: 0 0 18px;
+  text-align: center;
 }
 
 .auth-switch {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 26px;
 }
 
 .switch-chip {
@@ -396,6 +395,16 @@ textarea {
 .switch-chip.active {
   background: #1e3346;
   color: white;
+}
+
+.auth-card .form-grid,
+.auth-card .status-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-card .field-hint {
+  text-align: center;
 }
 
 .page-shell {
@@ -1411,6 +1420,15 @@ textarea {
     inset: 0 24px auto 24px;
     width: auto;
   }
+
+  .brand-lockup {
+    margin-top: 0;
+  }
+
+  .feature-list {
+    margin-top: 18px;
+  }
+
 }
 
 @media (max-width: 780px) {
@@ -1475,6 +1493,7 @@ textarea {
 @media (max-width: 520px) {
   .auth-shell {
     padding: 14px;
+    min-height: auto;
   }
 
   .brand-panel,
@@ -1484,16 +1503,17 @@ textarea {
 
   .auth-card {
     padding: 0;
+    align-content: start;
   }
 
   .brand-mark {
     font-size: 34px;
     margin-bottom: 18px;
+    margin-top: 0;
   }
 
-  .brand-subsection {
-    max-width: none;
-    padding: 12px 13px;
+  .brand-subheader {
+    margin-left: 0;
   }
 
   .brand-summary {
