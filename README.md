@@ -40,9 +40,11 @@ CARKEEPER_ADMIN_USER=admin
 CARKEEPER_ADMIN_EMAIL=admin@example.com
 CARKEEPER_ADMIN_PASSWORD=replace_with_a_strong_password
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+COOKIE_SECURE=true
 ```
 
 `NEXT_PUBLIC_GA_ID` is your Google Analytics 4 measurement ID. Leave it blank to disable analytics for a local environment.
+`COOKIE_SECURE` should stay `true` in normal production. Set it to `false` only for temporary HTTP-only EC2 testing before HTTPS is configured.
 
 Start development:
 

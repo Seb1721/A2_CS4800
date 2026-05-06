@@ -11,9 +11,9 @@ if [ ! -d ".git" ]; then
   exit 1
 fi
 
-if [ ! -f ".env.production" ]; then
-  echo "Missing .env.production in $APP_DIR."
-  echo "Create it on the EC2 instance with MONGODB_URI, MONGODB_DB_NAME, AUTH_SECRET, and NEXT_PUBLIC_GA_ID."
+if [ ! -f ".env.production" ] && [ ! -f ".env.local" ]; then
+  echo "Missing .env.production or .env.local in $APP_DIR."
+  echo "Create one on the EC2 instance with MONGODB_URI, MONGODB_DB_NAME, AUTH_SECRET, and NEXT_PUBLIC_GA_ID."
   exit 1
 fi
 

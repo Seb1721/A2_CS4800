@@ -2,7 +2,7 @@ name: Deploy (EC2)
 
 on:
   push:
-    branches: [ "carkeeper_webapp_next.js" ]
+    branches: [ "main", "carkeeper_webapp_next.js" ]
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           EC2_APP_DIR: ${{ secrets.EC2_APP_DIR }}
-          DEPLOY_BRANCH: carkeeper_webapp_next.js
+          DEPLOY_BRANCH: ${{ github.ref_name }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}

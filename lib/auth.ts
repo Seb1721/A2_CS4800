@@ -173,7 +173,7 @@ export async function setSessionCookie(response: NextResponse, token: string) {
     value: token,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: SESSION_DURATION_SECONDS
   });
@@ -185,7 +185,7 @@ export async function clearSessionCookie(response: NextResponse) {
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: 0
   });
@@ -211,4 +211,12 @@ function normalizeDisplayName(value: string, username: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function shouldUseSecureCookies() {
+  if (process.env.COOKIE_SECURE === "false") {
+    return false;
+  }
+
+  return process.env.NODE_ENV === "production";
 }

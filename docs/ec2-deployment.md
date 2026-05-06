@@ -4,7 +4,7 @@ This guide runs CarKeeper on a single EC2 instance with a stable public IP. Mong
 
 ## 1. Create the EC2 Instance
 
-Use Ubuntu 22.04 or 24.04 LTS. In the EC2 security group, allow:
+Use Ubuntu 22.04 or 24.04 LTS, or Amazon Linux 2023. In the EC2 security group, allow:
 
 - SSH `22` from your IP only
 - HTTP `80` from anywhere
@@ -37,7 +37,7 @@ cd A2_CS4800
 git checkout carkeeper_webapp_next.js
 ```
 
-Create `.env.production` on the EC2 instance:
+Create `.env.production` on the EC2 instance. `.env.local` also works if that is what you already use on the server:
 
 ```bash
 MONGODB_URI=your_mongodb_connection_string
@@ -47,9 +47,18 @@ CARKEEPER_ADMIN_USER=admin
 CARKEEPER_ADMIN_EMAIL=admin@example.com
 CARKEEPER_ADMIN_PASSWORD=replace_with_a_strong_password
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+COOKIE_SECURE=true
 ```
 
-Never commit `.env.production`.
+Never commit `.env.production` or `.env.local`.
+
+If you are testing directly on `http://<elastic-ip>:3000` before Nginx/HTTPS is configured, temporarily set:
+
+```bash
+COOKIE_SECURE=false
+```
+
+Switch it back to `true` once the app is served over HTTPS.
 
 ## 4. First Deployment
 
@@ -98,15 +107,15 @@ For HTTPS, point your domain DNS to the Elastic IP, then use Certbot.
 
 ## 6. Automatic Deployment from GitHub
 
-The workflow at `.github/workflows/deploy.yml` deploys on pushes to `carkeeper_webapp_next.js`.
+The workflow at `.github/workflows/deploy.yml` deploys on pushes to `main` and `carkeeper_webapp_next.js`. It deploys the branch that triggered the workflow.
 
 Add these GitHub repository secrets:
 
 - `EC2_HOST`: the Elastic IP or domain
-- `EC2_USER`: usually `ubuntu`
+- `EC2_USER`: usually `ubuntu` on Ubuntu, `ec2-user` on Amazon Linux
 - `EC2_SSH_KEY`: private SSH key that can log into the EC2 instance
 - `EC2_APP_DIR`: optional; defaults to `~/A2_CS4800`
 
 The EC2 instance also needs Git access to the repository. For a private repo, add a deploy key in GitHub and put the matching private key on the EC2 instance, or use an HTTPS token-backed remote.
 
-After that, every push to `carkeeper_webapp_next.js` will SSH into EC2, pull the latest code, run tests, build, and reload PM2.
+After that, every push to either deployment branch will SSH into EC2, pull the latest code, run tests, build, and reload PM2.
