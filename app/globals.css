@@ -158,135 +158,147 @@ textarea {
 }
 
 .auth-shell {
+  align-items: stretch;
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 440px);
+  grid-template-columns: minmax(280px, 0.82fr) minmax(360px, 460px);
+  gap: 0;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 32px 20px;
-  width: min(1080px, 100%);
+  padding: 36px 20px;
+  width: min(980px, 100%);
 }
 
 .brand-panel {
   background:
-    linear-gradient(145deg, rgba(12, 58, 116, 0.96), rgba(19, 100, 198, 0.9)),
-    #103d77;
+    linear-gradient(155deg, rgba(31, 44, 59, 0.98), rgba(59, 80, 102, 0.94)),
+    #243445;
   border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   color: white;
-  padding: 54px 48px;
+  display: grid;
+  align-content: start;
+  gap: 0;
+  min-height: 0;
+  padding: 38px 34px;
   position: relative;
 }
 
 .brand-panel::after {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(221, 184, 121, 0.18), rgba(221, 184, 121, 0));
+  border-radius: 999px;
   content: "";
-  height: 280px;
-  inset: auto -120px -120px auto;
+  height: 180px;
+  inset: auto 34px 28px 34px;
   position: absolute;
-  width: 280px;
+  width: auto;
 }
 
 .eyebrow {
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 249, 237, 0.88);
   display: inline-flex;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  margin-bottom: 22px;
-  padding: 8px 12px;
+  letter-spacing: 0.12em;
+  margin-bottom: 18px;
+  padding: 7px 11px;
   text-transform: uppercase;
 }
 
 .brand-panel h1 {
-  font-size: clamp(40px, 5vw, 58px);
+  font-size: clamp(28px, 3.6vw, 40px);
   letter-spacing: -0.04em;
-  line-height: 0.98;
-  margin: 0 0 16px;
-  max-width: 460px;
+  line-height: 1.02;
+  margin: 0 0 12px;
+  max-width: 320px;
 }
 
 .brand-panel p {
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 17px;
-  line-height: 1.7;
+  color: rgba(242, 245, 248, 0.78);
+  font-size: 14px;
+  line-height: 1.65;
   margin: 0;
-  max-width: 480px;
+  max-width: 320px;
 }
 
 .feature-list {
   display: grid;
-  gap: 14px;
-  margin-top: 34px;
+  gap: 10px;
+  margin-top: 24px;
+  max-width: 320px;
 }
 
 .feature-item {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 18px;
-  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px 14px;
 }
 
 .feature-item strong {
   display: block;
-  font-size: 15px;
-  margin-bottom: 6px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
 }
 
 .feature-item span {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 14px;
-  line-height: 1.55;
+  color: rgba(237, 241, 245, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .auth-panel {
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  background:
+    linear-gradient(180deg, rgba(247, 245, 240, 0.9), rgba(240, 236, 229, 0.9));
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
   display: grid;
-  padding: 42px 34px;
+  padding: 26px;
 }
 
 .auth-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 30px 28px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d9d3c8;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(33, 40, 46, 0.08);
+  padding: 26px 24px;
 }
 
 .auth-card h2 {
-  font-size: 30px;
+  font-size: 26px;
   letter-spacing: -0.03em;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
 
 .auth-card p {
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.6;
-  margin: 0 0 22px;
+  color: #59687a;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 18px;
 }
 
 .auth-switch {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
 .switch-chip {
-  background: #edf4fb;
+  background: #ece4d8;
   border-radius: 999px;
-  color: #214262;
+  color: #495666;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 10px 14px;
+  letter-spacing: 0.04em;
+  padding: 9px 13px;
+  text-transform: uppercase;
 }
 
 .switch-chip.active {
-  background: var(--primary);
+  background: #2f4459;
   color: white;
 }
 
@@ -1262,6 +1274,7 @@ textarea {
 
   .brand-panel {
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 32px 28px;
   }
 
   .auth-panel {
@@ -1320,11 +1333,11 @@ textarea {
 
   .brand-panel,
   .auth-panel {
-    padding: 28px 22px;
+    padding: 24px 20px;
   }
 
   .auth-card {
-    padding: 24px 20px;
+    padding: 22px 18px;
   }
 
   .overview-grid {

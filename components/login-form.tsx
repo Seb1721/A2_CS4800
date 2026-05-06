@@ -54,25 +54,18 @@ export function LoginForm() {
   return (
     <main className="auth-shell">
       <section className="brand-panel">
-        <div className="eyebrow">Secure Vehicle Records</div>
-        <h1>Professional car tracking, now built for a modern full-stack workflow.</h1>
-        <p>
-          CarKeeper runs on Next.js and MongoDB so your UI, API routes, and deployment path
-          live in one cleaner application.
-        </p>
+        <div className="eyebrow">CarKeeper</div>
+        <h1>Vehicle records, without the clutter.</h1>
+        <p>Sign in to manage mileage, service history, and maintenance planning in one place.</p>
 
         <div className="feature-list">
           <div className="feature-item">
-            <strong>Protected account access</strong>
-            <span>Passwords are hashed and sessions are stored in secure HTTP-only cookies.</span>
+            <strong>Private by default</strong>
+            <span>Each garage stays tied to its owner account.</span>
           </div>
           <div className="feature-item">
-            <strong>AWS-friendly deployment</strong>
-            <span>Designed for HTTPS hosting on Amplify or another managed Next.js runtime.</span>
-          </div>
-          <div className="feature-item">
-            <strong>One codebase</strong>
-            <span>Frontend and backend now share a single React and TypeScript foundation.</span>
+            <strong>Clear maintenance view</strong>
+            <span>Recent service, reminders, and mileage live in one workflow.</span>
           </div>
         </div>
       </section>
@@ -99,8 +92,8 @@ export function LoginForm() {
           <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
           <p>
             {mode === "login"
-              ? "Access your private dashboard to manage vehicles and service records."
-              : "Start with a secure account so each vehicle record stays tied to its owner."}
+              ? "Access your dashboard."
+              : "Create an account to start your garage."}
           </p>
 
           {error ? <div className="status-card error">{error}</div> : null}
