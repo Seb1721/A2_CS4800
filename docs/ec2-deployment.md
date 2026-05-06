@@ -16,7 +16,19 @@ Allocate and associate an Elastic IP with the instance. Add that Elastic IP to M
 
 ## 2. Install Server Dependencies
 
-SSH into the instance, then install Node, Nginx, Git, and PM2:
+Use the package flow that matches your instance OS.
+
+### Amazon Linux 2023
+
+```bash
+sudo dnf update -y
+sudo dnf install -y git nginx
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+sudo dnf install -y nodejs
+sudo npm install -g pm2
+```
+
+### Ubuntu 22.04 or 24.04
 
 ```bash
 sudo apt update
@@ -32,8 +44,8 @@ npm install -g pm2
 
 ```bash
 cd ~
-git clone YOUR_REPO_SSH_URL A2_CS4800
-cd A2_CS4800
+git clone YOUR_REPO_SSH_URL app
+cd app
 git checkout carkeeper_webapp_next.js
 ```
 
@@ -75,12 +87,13 @@ pm2 save
 
 ## 5. Configure Nginx
 
-Create `/etc/nginx/sites-available/carkeeper`:
+On Amazon Linux, create `/etc/nginx/conf.d/carkeeper.conf`. On Ubuntu, you can use either the same `conf.d` path or the `sites-available`/`sites-enabled` pattern if you prefer.
 
 ```nginx
 server {
-    listen 80;
-    server_name your-domain.com;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name your-domain.com www.your-domain.com;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -95,15 +108,28 @@ server {
 }
 ```
 
-Enable it:
+Test and reload Nginx:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/carkeeper /etc/nginx/sites-enabled/carkeeper
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-For HTTPS, point your domain DNS to the Elastic IP, then use Certbot.
+If Amazon Linux is still serving the default welcome page, remove the default `server {}` block from `/etc/nginx/nginx.conf` so your `conf.d/carkeeper.conf` server becomes the active default.
+
+For HTTPS, point your domain DNS to the Elastic IP, then use Certbot:
+
+```bash
+sudo dnf install -y python3 augeas-libs
+sudo python3 -m venv /opt/certbot
+sudo /opt/certbot/bin/pip install --upgrade pip
+sudo /opt/certbot/bin/pip install certbot certbot-nginx
+sudo ln -s /opt/certbot/bin/certbot /usr/local/bin/certbot
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+sudo certbot renew --dry-run
+```
+
+After HTTPS is active, set `COOKIE_SECURE=true` in the server env file and restart the app.
 
 ## 6. Automatic Deployment from GitHub
 
@@ -114,7 +140,7 @@ Add these GitHub repository secrets:
 - `EC2_HOST`: the Elastic IP or domain
 - `EC2_USER`: usually `ubuntu` on Ubuntu, `ec2-user` on Amazon Linux
 - `EC2_SSH_KEY`: private SSH key that can log into the EC2 instance
-- `EC2_APP_DIR`: optional; defaults to `~/A2_CS4800`
+- `EC2_APP_DIR`: optional; defaults to `~/app`
 
 The EC2 instance also needs Git access to the repository. For a private repo, add a deploy key in GitHub and put the matching private key on the EC2 instance, or use an HTTPS token-backed remote.
 

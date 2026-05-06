@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-$HOME/A2_CS4800}"
+APP_DIR="${APP_DIR:-$HOME/app}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-carkeeper_webapp_next.js}"
 
 cd "$APP_DIR"

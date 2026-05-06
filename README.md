@@ -1,11 +1,11 @@
 # CarKeeper
 
-CarKeeper is now structured as a full-stack `Next.js` app with:
+CarKeeper is a full-stack `Next.js` app with:
 
 - `Next.js App Router` for frontend pages and backend route handlers
 - `MongoDB` for user accounts, cars, and service history
 - Secure cookie-based login using signed HTTP-only session cookies
-- An AWS-friendly deployment path through `Amplify Hosting`
+- an AWS-friendly deployment path through `EC2` or `Amplify Hosting`
 
 ## Tech Stack
 
