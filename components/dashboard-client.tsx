@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SyntheticEvent, useDeferredValue, useEffect, useState } from "react";
+import { SyntheticEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -26,7 +26,6 @@ import type {
   DashboardOverview,
   DashboardRecentService,
   MileageHistoryItem,
-  ReportSummary,
   ServiceReminderRule,
   ServiceHistoryItem,
   TrendPoint,
@@ -133,22 +132,6 @@ const emptyProfileForm = {
   email: ""
 };
 
-const emptyReportFilters = {
-  carId: "",
-  dateFrom: "",
-  dateTo: ""
-};
-
-const serviceSortOptions = [
-  { label: "Newest date", value: "date-desc" },
-  { label: "Oldest date", value: "date-asc" },
-  { label: "Highest mileage", value: "mileage-desc" },
-  { label: "Lowest mileage", value: "mileage-asc" },
-  { label: "Highest cost", value: "cost-desc" },
-  { label: "Lowest cost", value: "cost-asc" },
-  { label: "Category A-Z", value: "type-asc" }
-] as const;
-
 export function DashboardClient({
   attentionItems: initialAttentionItems,
   initialCars,
@@ -167,7 +150,6 @@ export function DashboardClient({
   const [attentionItems, setAttentionItems] = useState(initialAttentionItems);
   const [profile, setProfile] = useState(initialProfile);
   const [selectedCar, setSelectedCar] = useState<CarDetails | null>(initialSelectedCar);
-  const [lookupId, setLookupId] = useState("");
   const [carForm, setCarForm] = useState(emptyCarForm);
   const [editCarForm, setEditCarForm] = useState(emptyEditCarForm);
   const [serviceForm, setServiceForm] = useState(emptyServiceForm);
@@ -178,19 +160,11 @@ export function DashboardClient({
     displayName: initialProfile?.displayName ?? "",
     email: initialProfile?.email ?? ""
   });
-  const [reportFilters, setReportFilters] = useState(emptyReportFilters);
-  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
   const [editingMileageEntryId, setEditingMileageEntryId] = useState<number | null>(null);
-  const [serviceSearch, setServiceSearch] = useState("");
-  const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
-  const [serviceDateFrom, setServiceDateFrom] = useState("");
-  const [serviceDateTo, setServiceDateTo] = useState("");
   const [trendDateFrom, setTrendDateFrom] = useState("");
   const [trendDateTo, setTrendDateTo] = useState("");
   const [trendServiceTypeFilter, setTrendServiceTypeFilter] = useState("all");
-  const [serviceSort, setServiceSort] =
-    useState<(typeof serviceSortOptions)[number]["value"]>("date-desc");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSavingVehicle, setIsSavingVehicle] = useState(false);
@@ -198,11 +172,8 @@ export function DashboardClient({
   const [isSavingService, setIsSavingService] = useState(false);
   const [isSavingMileageEntry, setIsSavingMileageEntry] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isLoadingReport, setIsLoadingReport] = useState(false);
-  const [isExportingReport, setIsExportingReport] = useState(false);
   const [deletingServiceId, setDeletingServiceId] = useState<number | null>(null);
   const [deletingMileageEntryId, setDeletingMileageEntryId] = useState<number | null>(null);
-  const deferredServiceSearch = useDeferredValue(serviceSearch);
 
   useEffect(() => {
     setCars(initialCars);
@@ -277,10 +248,6 @@ export function DashboardClient({
     setProfileForm((current) => ({ ...current, [field]: value }));
   }
 
-  function updateReportFilter(field: keyof typeof emptyReportFilters, value: string) {
-    setReportFilters((current) => ({ ...current, [field]: value }));
-  }
-
   function updateReminderRuleField(
     mode: "create" | "edit",
     index: number,
@@ -347,24 +314,17 @@ export function DashboardClient({
 
   function syncSelectedCar(car: CarDetails | null) {
     setSelectedCar(car);
-    setServiceSearch("");
-    setServiceTypeFilter("all");
-    setServiceDateFrom("");
-    setServiceDateTo("");
-    setServiceSort("date-desc");
     setEditingServiceId(null);
     setEditingMileageEntryId(null);
     setEditServiceForm(emptyEditServiceForm);
     setEditMileageEntryForm(emptyEditMileageEntryForm);
 
     if (!car) {
-      setLookupId("");
       setEditCarForm(emptyEditCarForm);
       setMileageForm(emptyMileageForm);
       return;
     }
 
-    setLookupId(String(car.carId));
     setEditCarForm({
       allowMileageCorrection: false,
       imageUrl: car.imageUrl,
@@ -424,10 +384,6 @@ export function DashboardClient({
     router.refresh();
   }
 
-  function openGarage() {
-    router.push("/garage");
-  }
-
   function openVehiclePage(carId: number) {
     router.push(`/garage/${carId}`);
   }
@@ -446,46 +402,12 @@ export function DashboardClient({
     });
   }
 
-  async function fetchCar(carId: string | number, successMessage?: string) {
-    setMessage(null);
-    const response = await fetch(`/api/cars/${carId}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload.error ?? "Could not load car.");
-    }
-
-    const car = payload as CarDetails;
-    syncSelectedCar(car);
-
-    if (successMessage) {
-      setMessage({ type: "success", text: successMessage });
-    }
-
-    return car;
-  }
-
-  async function handleLookup(event?: SyntheticEvent) {
-    event?.preventDefault();
-
-    if (!lookupId.trim()) {
-      setMessage({ type: "error", text: "Enter a car ID." });
-      return;
-    }
-
-    try {
-      await fetchCar(lookupId.trim());
-    } catch (error) {
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not load car." });
-    }
-  }
-
   async function handleReminderAction(carId: number, serviceType: string) {
     try {
-      const car = selectedCar?.carId === carId ? selectedCar : await fetchCar(carId);
+      const car = selectedCar?.carId === carId ? selectedCar : null;
 
       if (!car) {
-        return;
+        throw new Error("Open the vehicle record before logging a reminder service.");
       }
 
       primeServiceForm(car, serviceType);
@@ -499,63 +421,6 @@ export function DashboardClient({
         text: error instanceof Error ? error.message : "Could not open the reminder workflow."
       });
     }
-  }
-
-  async function handleLoadReport(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(null);
-    setIsLoadingReport(true);
-
-    try {
-      const response = await fetch(buildReportUrl(reportFilters), { cache: "no-store" });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Could not load report.");
-      }
-
-      setReportSummary(payload as ReportSummary);
-      setMessage({ type: "success", text: "Report summary updated." });
-    } catch (error) {
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not load report." });
-    } finally {
-      setIsLoadingReport(false);
-    }
-  }
-
-  async function handleExportReport() {
-    setMessage(null);
-    setIsExportingReport(true);
-
-    try {
-      const response = await fetch(buildReportUrl(reportFilters, "csv"), { cache: "no-store" });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error ?? "Could not export report.");
-      }
-
-      const csv = await response.text();
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = getReportFileName(reportFilters);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(link.href);
-      setMessage({ type: "success", text: "CSV export prepared." });
-    } catch (error) {
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not export report." });
-    } finally {
-      setIsExportingReport(false);
-    }
-  }
-
-  function handleResetReport() {
-    setReportFilters(emptyReportFilters);
-    setReportSummary(null);
-    setMessage({ type: "success", text: "Report filters cleared." });
   }
 
   async function handleAddCar(event: SyntheticEvent<HTMLFormElement>) {
@@ -977,24 +842,6 @@ export function DashboardClient({
     }
   }
 
-  const filteredServiceHistory = selectedCar
-    ? [...selectedCar.serviceHistory]
-        .filter((service) => {
-          const matchesType = serviceTypeFilter === "all" || service.serviceType === serviceTypeFilter;
-          const query = deferredServiceSearch.trim().toLowerCase();
-          const matchesQuery =
-            !query ||
-            service.serviceType.toLowerCase().includes(query) ||
-            service.description.toLowerCase().includes(query) ||
-            service.notes.toLowerCase().includes(query);
-          const serviceDate = parseDisplayDate(service.date);
-          const matchesFrom = !serviceDateFrom || serviceDate >= parseIsoDateValue(serviceDateFrom);
-          const matchesTo = !serviceDateTo || serviceDate <= parseIsoDateValue(serviceDateTo);
-
-          return matchesType && matchesQuery && matchesFrom && matchesTo;
-        })
-        .sort((left, right) => compareServices(left, right, serviceSort))
-    : [];
   const serviceTypeOptions = selectedCar
     ? Array.from(new Set(selectedCar.serviceHistory.map((service) => service.serviceType))).sort()
     : [];
@@ -2496,615 +2343,6 @@ function getPageMeta(view: DashboardView, selectedCar: CarDetails | null) {
   }
 }
 
-function CarDetailView({
-  car,
-  cancelEditingMileageEntry,
-  cancelEditingService,
-  deletingMileageEntryId,
-  deletingServiceId,
-  editMileageEntryForm,
-  editServiceForm,
-  editingMileageEntryId,
-  editingServiceId,
-  filteredServiceHistory,
-  handleDeleteMileageEntry,
-  handleDeleteService,
-  handleSaveMileageEntryEdit,
-  handleSaveServiceEdit,
-  isSavingMileageEntry,
-  isSavingService,
-  serviceDateFrom,
-  serviceDateTo,
-  serviceSearch,
-  serviceSort,
-  setTrendDateFrom,
-  setTrendDateTo,
-  setTrendServiceTypeFilter,
-  serviceTypeFilter,
-  serviceTypeOptions,
-  setServiceDateFrom,
-  setServiceDateTo,
-  setServiceSearch,
-  setServiceSort,
-  setServiceTypeFilter,
-  trendAverageMonthlyExpense,
-  trendAverageMonthlyMileage,
-  trendAverageMonthlyServiceFrequency,
-  trendCategoryExpenses,
-  trendDateFrom,
-  trendDateTo,
-  trendExpensePoints,
-  trendMilesDriven,
-  trendMileagePoints,
-  trendServiceTypeFilter,
-  triggerReminderAction,
-  startEditingMileageEntry,
-  startEditingService,
-  updateEditMileageEntryField,
-  updateEditServiceField
-}: {
-  car: CarDetails;
-  cancelEditingMileageEntry: () => void;
-  cancelEditingService: () => void;
-  deletingMileageEntryId: number | null;
-  deletingServiceId: number | null;
-  editMileageEntryForm: {
-    mileage: string;
-    date: string;
-    notes: string;
-    allowCorrection: boolean;
-  };
-  editServiceForm: {
-    serviceDate: string;
-    mileage: string;
-    serviceType: string;
-    description: string;
-    notes: string;
-    cost: string;
-  };
-  editingMileageEntryId: number | null;
-  editingServiceId: number | null;
-  filteredServiceHistory: ServiceHistoryItem[];
-  handleDeleteMileageEntry: (entryId: number) => Promise<void>;
-  handleDeleteService: (serviceId: number) => Promise<void>;
-  handleSaveMileageEntryEdit: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
-  handleSaveServiceEdit: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
-  isSavingMileageEntry: boolean;
-  isSavingService: boolean;
-  serviceDateFrom: string;
-  serviceDateTo: string;
-  serviceSearch: string;
-  serviceSort: (typeof serviceSortOptions)[number]["value"];
-  setTrendDateFrom: (value: string) => void;
-  setTrendDateTo: (value: string) => void;
-  setTrendServiceTypeFilter: (value: string) => void;
-  serviceTypeFilter: string;
-  serviceTypeOptions: string[];
-  setServiceDateFrom: (value: string) => void;
-  setServiceDateTo: (value: string) => void;
-  setServiceSearch: (value: string) => void;
-  setServiceSort: (value: (typeof serviceSortOptions)[number]["value"]) => void;
-  setServiceTypeFilter: (value: string) => void;
-  trendAverageMonthlyExpense: number | null;
-  trendAverageMonthlyMileage: number | null;
-  trendAverageMonthlyServiceFrequency: number | null;
-  trendCategoryExpenses: CategoryExpenseItem[];
-  trendDateFrom: string;
-  trendDateTo: string;
-  trendExpensePoints: TrendPoint[];
-  trendMilesDriven: number | null;
-  trendMileagePoints: TrendPoint[];
-  trendServiceTypeFilter: string;
-  triggerReminderAction: (carId: number, serviceType: string) => Promise<void>;
-  startEditingMileageEntry: (entry: MileageHistoryItem) => void;
-  startEditingService: (service: ServiceHistoryItem) => void;
-  updateEditMileageEntryField: (
-    field: "mileage" | "date" | "notes" | "allowCorrection",
-    value: string | boolean
-  ) => void;
-  updateEditServiceField: (
-    field: "serviceDate" | "mileage" | "serviceType" | "description" | "notes" | "cost",
-    value: string
-  ) => void;
-}) {
-  return (
-    <>
-      <div className="result-header">
-        <div className="result-title">
-          <h2>{car.carName}</h2>
-          <p className="result-subtitle">
-            Centralized vehicle overview, maintenance costs, and mileage history.
-          </p>
-          {car.needsAttention ? <div className="attention-pill">Maintenance attention recommended</div> : null}
-        </div>
-
-        {car.imageUrl ? (
-          <div className="car-image-wrap">
-            <img alt={`Image of ${car.carName}`} src={car.imageUrl} />
-          </div>
-        ) : null}
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Car ID</div>
-          <div className="stat-value">{car.carId}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Current Mileage</div>
-          <div className="stat-value">{car.currentMileage.toLocaleString()}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Last Service</div>
-          <div className="stat-value">{car.lastServiceDate}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Lifetime Expenses</div>
-          <div className="stat-value">{formatCurrency(car.lifetimeExpenses)}</div>
-        </div>
-      </div>
-
-      <div className="stats-grid compact">
-        <div className="stat-card">
-          <div className="stat-label">Service Count</div>
-          <div className="stat-value">{car.serviceCount}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Average Service Cost</div>
-          <div className="stat-value">{formatCurrency(car.averageServiceCost)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Miles Since Service</div>
-          <div className="stat-value">
-            {car.milesSinceLastService === null ? "N/A" : car.milesSinceLastService.toLocaleString()}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Days Since Service</div>
-          <div className="stat-value">{car.daysSinceLastService ?? "N/A"}</div>
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <div className={`reminder-card ${car.needsAttention ? "warning" : "ok"}`}>
-          <div className="reminder-card-header">
-            <div>
-              <div className="reminder-title">Service Reminder Watch</div>
-              <div className="reminder-copy">
-                {car.serviceReminderRules.length === 0
-                  ? "No reminder categories configured yet."
-                  : `${car.serviceReminderRules.length} configured reminder ${
-                      car.serviceReminderRules.length === 1 ? "category" : "categories"
-                    }.`}
-              </div>
-            </div>
-            <div className="reminder-status">
-              {car.attentionReason ??
-                (car.serviceReminderRules.length === 0
-                  ? "Add a reminder rule in vehicle settings to start tracking due service."
-                  : "No upcoming reminder flags right now.")}
-            </div>
-          </div>
-
-          {car.serviceReminderRules.length === 0 ? null : (
-            <div className="reminder-rule-list">
-              {car.categoryReminders.map((reminder) => (
-                <ReminderStatusCard
-                  carId={car.carId}
-                  key={reminder.serviceType}
-                  onLogService={triggerReminderAction}
-                  reminder={reminder}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <div className="detail-section-heading">
-          <h3>Trend Snapshot</h3>
-          <p>Filter trend data by date range and service category to analyze vehicle usage over time.</p>
-        </div>
-
-        <div className="toolbar-grid">
-          <div className="field-group">
-            <label htmlFor="trendDateFrom">From Date</label>
-            <input
-              id="trendDateFrom"
-              onChange={(event) => setTrendDateFrom(event.target.value)}
-              type="date"
-              value={trendDateFrom}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="trendDateTo">To Date</label>
-            <input
-              id="trendDateTo"
-              onChange={(event) => setTrendDateTo(event.target.value)}
-              type="date"
-              value={trendDateTo}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="trendServiceType">Service Category</label>
-            <select
-              id="trendServiceType"
-              onChange={(event) => setTrendServiceTypeFilter(event.target.value)}
-              value={trendServiceTypeFilter}
-            >
-              <option value="all">All categories</option>
-              {serviceTypeOptions.map((serviceType) => (
-                <option key={serviceType} value={serviceType}>
-                  {serviceType}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="stats-grid compact">
-          <div className="stat-card">
-            <div className="stat-label">Miles In Scope</div>
-            <div className="stat-value">{trendMilesDriven === null ? "N/A" : trendMilesDriven.toLocaleString()}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Avg Monthly Miles</div>
-            <div className="stat-value">
-              {trendAverageMonthlyMileage === null ? "N/A" : `${trendAverageMonthlyMileage.toLocaleString()} mi`}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Avg Monthly Expense</div>
-            <div className="stat-value">{formatCurrency(trendAverageMonthlyExpense)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Service Events / Month</div>
-            <div className="stat-value">
-              {trendAverageMonthlyServiceFrequency === null ? "N/A" : trendAverageMonthlyServiceFrequency}
-            </div>
-          </div>
-        </div>
-
-        <div className="trend-grid">
-          <TrendCard
-            emptyLabel="Mileage trend will appear after a few recorded entries."
-            label="Mileage Trend"
-            points={trendMileagePoints}
-            prefix=""
-            suffix=" mi"
-          />
-          <TrendCard
-            emptyLabel="Expense trend will appear after you add priced service records."
-            label="Expense Trend"
-            points={trendExpensePoints}
-            prefix="$"
-            suffix=""
-          />
-        </div>
-
-        <div className="category-section">
-          <h4>Expense By Service Category</h4>
-          {trendCategoryExpenses.length === 0 ? (
-            <div className="service-card">
-              <div className="service-notes muted-text">No service costs match the current trend filters.</div>
-            </div>
-          ) : (
-            <div className="category-list">
-              {trendCategoryExpenses.map((item) => (
-                <CategoryExpenseCard item={item} key={item.category} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <div className="detail-section-heading">
-          <h3>Service History</h3>
-          <p>Filter by category or search by notes, type, and description.</p>
-        </div>
-
-        <div className="toolbar-grid">
-          <div className="field-group">
-            <label htmlFor="serviceSearch">Search Records</label>
-            <input
-              id="serviceSearch"
-              onChange={(event) => setServiceSearch(event.target.value)}
-              placeholder="Oil, brakes, dealer, rotation..."
-              type="text"
-              value={serviceSearch}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="serviceTypeFilter">Category</label>
-            <select
-              id="serviceTypeFilter"
-              onChange={(event) => setServiceTypeFilter(event.target.value)}
-              value={serviceTypeFilter}
-            >
-              <option value="all">All categories</option>
-              {serviceTypeOptions.map((serviceType) => (
-                <option key={serviceType} value={serviceType}>
-                  {serviceType}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field-group">
-            <label htmlFor="serviceDateFrom">From Date</label>
-            <input
-              id="serviceDateFrom"
-              onChange={(event) => setServiceDateFrom(event.target.value)}
-              type="date"
-              value={serviceDateFrom}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="serviceDateTo">To Date</label>
-            <input
-              id="serviceDateTo"
-              onChange={(event) => setServiceDateTo(event.target.value)}
-              type="date"
-              value={serviceDateTo}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="serviceSort">Sort By</label>
-            <select
-              id="serviceSort"
-              onChange={(event) =>
-                setServiceSort(event.target.value as (typeof serviceSortOptions)[number]["value"])
-              }
-              value={serviceSort}
-            >
-              {serviceSortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {filteredServiceHistory.length === 0 ? (
-          <div className="service-card">
-            <div className="service-notes muted-text">No service records match the current filters.</div>
-          </div>
-        ) : (
-          <div className="service-list">
-            {filteredServiceHistory.map((service) => (
-              <div className="service-card" key={service.serviceId}>
-                <div className="service-top">
-                  <div className="service-type">{service.serviceType || "Service Entry"}</div>
-                  <div className="service-actions">
-                    <div className="service-date">{service.date}</div>
-                    <button
-                      className="btn btn-inline"
-                      onClick={() => startEditingService(service)}
-                      type="button"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-inline-danger"
-                      disabled={deletingServiceId === service.serviceId}
-                      onClick={() => void handleDeleteService(service.serviceId)}
-                      type="button"
-                    >
-                      {deletingServiceId === service.serviceId ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="service-meta">
-                  <div className="service-meta-item">
-                    <div className="service-meta-label">Mileage</div>
-                    <div className="service-meta-value">{service.mileage.toLocaleString()}</div>
-                  </div>
-                  <div className="service-meta-item">
-                    <div className="service-meta-label">Cost</div>
-                    <div className="service-meta-value">{formatCurrency(service.cost)}</div>
-                  </div>
-                  <div className="service-meta-item">
-                    <div className="service-meta-label">Service ID</div>
-                    <div className="service-meta-value">{service.serviceId}</div>
-                  </div>
-                </div>
-
-                <div className="service-notes">
-                  <div>
-                    <strong>Description:</strong> {service.description || "N/A"}
-                  </div>
-                  <div className="service-notes-row">
-                    <strong>Notes:</strong> {service.notes || "N/A"}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {editingServiceId !== null ? (
-        <div className="detail-section">
-          <div className="detail-section-heading">
-            <h3>Edit Service Record</h3>
-            <p>Update the service date, mileage, category, cost, and notes.</p>
-          </div>
-
-          <form className="form-grid" onSubmit={handleSaveServiceEdit}>
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="editServiceDate">Service Date</label>
-                <input
-                  id="editServiceDate"
-                  onChange={(event) => updateEditServiceField("serviceDate", event.target.value)}
-                  required
-                  type="date"
-                  value={editServiceForm.serviceDate}
-                />
-              </div>
-              <div className="field-group">
-                <label htmlFor="editServiceMileage">Mileage</label>
-                <input
-                  id="editServiceMileage"
-                  min="0"
-                  onChange={(event) => updateEditServiceField("mileage", event.target.value)}
-                  required
-                  type="number"
-                  value={editServiceForm.mileage}
-                />
-              </div>
-            </div>
-
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="editServiceType">Service Type</label>
-                <select
-                  id="editServiceType"
-                  onChange={(event) => updateEditServiceField("serviceType", event.target.value)}
-                  value={editServiceForm.serviceType}
-                >
-                  {serviceTypes.map((serviceType) => (
-                    <option key={serviceType} value={serviceType}>
-                      {serviceType}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field-group">
-                <label htmlFor="editServiceCost">Cost</label>
-                <input
-                  id="editServiceCost"
-                  min="0"
-                  onChange={(event) => updateEditServiceField("cost", event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={editServiceForm.cost}
-                />
-              </div>
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="editServiceDescription">Description</label>
-              <input
-                id="editServiceDescription"
-                onChange={(event) => updateEditServiceField("description", event.target.value)}
-                type="text"
-                value={editServiceForm.description}
-              />
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="editServiceNotes">Notes</label>
-              <textarea
-                id="editServiceNotes"
-                onChange={(event) => updateEditServiceField("notes", event.target.value)}
-                rows={3}
-                value={editServiceForm.notes}
-              />
-            </div>
-
-            <div className="action-row">
-              <button className="btn btn-primary" disabled={isSavingService} type="submit">
-                {isSavingService ? "Saving..." : "Save Service Changes"}
-              </button>
-              <button className="btn btn-secondary" onClick={cancelEditingService} type="button">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-
-      <div className="detail-section">
-        <div className="detail-section-heading">
-          <h3>Mileage Timeline</h3>
-          <p>Review how the vehicle mileage has changed over time and manage manual entries.</p>
-        </div>
-
-        <div className="timeline-list">
-          {car.mileageHistory.map((entry) => (
-            <MileageEntryCard
-              deletingMileageEntryId={deletingMileageEntryId}
-              entry={entry}
-              handleDeleteMileageEntry={handleDeleteMileageEntry}
-              startEditingMileageEntry={startEditingMileageEntry}
-              key={entry.entryId}
-            />
-          ))}
-        </div>
-      </div>
-
-      {editingMileageEntryId !== null ? (
-        <div className="detail-section">
-          <div className="detail-section-heading">
-            <h3>Edit Mileage Entry</h3>
-            <p>Update the recorded date, mileage, and notes for this manual entry.</p>
-          </div>
-
-          <form className="form-grid" onSubmit={handleSaveMileageEntryEdit}>
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="editMileageEntryDate">Entry Date</label>
-                <input
-                  id="editMileageEntryDate"
-                  onChange={(event) => updateEditMileageEntryField("date", event.target.value)}
-                  required
-                  type="date"
-                  value={editMileageEntryForm.date}
-                />
-              </div>
-              <div className="field-group">
-                <label htmlFor="editMileageEntryValue">Mileage</label>
-                <input
-                  id="editMileageEntryValue"
-                  min="0"
-                  onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
-                  required
-                  type="number"
-                  value={editMileageEntryForm.mileage}
-                />
-              </div>
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="editMileageEntryNotes">Notes</label>
-              <textarea
-                id="editMileageEntryNotes"
-                onChange={(event) => updateEditMileageEntryField("notes", event.target.value)}
-                rows={3}
-                value={editMileageEntryForm.notes}
-              />
-            </div>
-
-            <label className="checkbox-row">
-              <input
-                checked={editMileageEntryForm.allowCorrection}
-                onChange={(event) =>
-                  updateEditMileageEntryField("allowCorrection", event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>Allow a lower mileage if this edit is a correction.</span>
-            </label>
-
-            <div className="action-row">
-              <button className="btn btn-primary" disabled={isSavingMileageEntry} type="submit">
-                {isSavingMileageEntry ? "Saving..." : "Save Mileage Entry"}
-              </button>
-              <button className="btn btn-secondary" onClick={cancelEditingMileageEntry} type="button">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
 function ReminderRuleEditor({
   mode,
   onAddRule,
@@ -3218,20 +2456,9 @@ function ReminderRuleEditor({
   );
 }
 
-function ReminderWatchGroup({
-  emptyLabel,
-  items,
-  label,
-  onLogService,
-  onOpenCar
-}: {
-  emptyLabel: string;
-  items: AttentionItem[];
-  label: string;
-  onLogService: (carId: number, serviceType: string) => Promise<void>;
-  onOpenCar: (carId: string | number, successMessage?: string) => Promise<CarDetails | void>;
-}) {
-  return (
+function __REMOVE_ReminderWatchGroup() {
+  return null;
+  /*
     <div className="watch-group">
       <div className="watch-group-header">
         <h3>{label}</h3>
@@ -3275,6 +2502,7 @@ function ReminderWatchGroup({
       )}
     </div>
   );
+  */
 }
 
 function ReminderStatusCard({
@@ -3348,7 +2576,8 @@ function MileageEntryCard({
   handleDeleteMileageEntry: (entryId: number) => Promise<void>;
   startEditingMileageEntry: (entry: MileageHistoryItem) => void;
 }) {
-  return (
+  return null;
+  /*
     <div className="timeline-card">
       <div className="timeline-top">
         <div className="timeline-date">{entry.date}</div>
@@ -3375,6 +2604,7 @@ function MileageEntryCard({
       <div className="timeline-notes">{entry.notes}</div>
     </div>
   );
+  */
 }
 
 function TrendCard({
@@ -3492,39 +2722,6 @@ function serializeReminderRuleForms(rules: ReminderRuleForm[]): ServiceReminderR
   }));
 }
 
-function buildReportUrl(
-  filters: { carId: string; dateFrom: string; dateTo: string },
-  format?: "csv"
-) {
-  const params = new URLSearchParams();
-
-  if (filters.carId) {
-    params.set("carId", filters.carId);
-  }
-
-  if (filters.dateFrom) {
-    params.set("dateFrom", filters.dateFrom);
-  }
-
-  if (filters.dateTo) {
-    params.set("dateTo", filters.dateTo);
-  }
-
-  if (format) {
-    params.set("format", format);
-  }
-
-  const query = params.toString();
-  return query ? `/api/reports?${query}` : "/api/reports";
-}
-
-function getReportFileName(filters: { carId: string; dateFrom: string; dateTo: string }) {
-  const scope = filters.carId ? `car-${filters.carId}` : "garage";
-  const start = filters.dateFrom || "all";
-  const end = filters.dateTo || "all";
-  return `carkeeper-report-${scope}-${start}-to-${end}.csv`;
-}
-
 function formatDateForServiceApi(value: string) {
   const [year, month, day] = value.split("-");
   if (!year || !month || !day) {
@@ -3551,35 +2748,6 @@ function parseDisplayDate(value: string) {
 function parseIsoDateValue(value: string) {
   const [year, month, day] = value.split("-");
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-}
-
-function compareServices(
-  left: ServiceHistoryItem,
-  right: ServiceHistoryItem,
-  sort: (typeof serviceSortOptions)[number]["value"]
-) {
-  const leftDate = parseDisplayDate(left.date).getTime();
-  const rightDate = parseDisplayDate(right.date).getTime();
-  const leftCost = left.cost ?? -1;
-  const rightCost = right.cost ?? -1;
-
-  switch (sort) {
-    case "date-asc":
-      return leftDate - rightDate;
-    case "mileage-desc":
-      return right.mileage - left.mileage;
-    case "mileage-asc":
-      return left.mileage - right.mileage;
-    case "cost-desc":
-      return rightCost - leftCost;
-    case "cost-asc":
-      return leftCost - rightCost;
-    case "type-asc":
-      return left.serviceType.localeCompare(right.serviceType);
-    case "date-desc":
-    default:
-      return rightDate - leftDate;
-  }
 }
 
 function formatSourceLabel(source: string) {

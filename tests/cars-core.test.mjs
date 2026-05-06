@@ -240,76 +240,6 @@ test("updateServiceForCar recalculates lifetime cost when a priced service becom
   );
 });
 
-test("getReportSummaryForUser includes services on exact date boundaries", async () => {
-  const db = createMockDatabase();
-  harness.setMockDatabase(db);
-
-  const car = await harness.cars.createCar("driver", {
-    imageUrl: "",
-    make: "Hyundai",
-    mileage: 30000,
-    model: "Elantra",
-    serviceReminderRules: [],
-    year: 2022
-  });
-
-  await harness.cars.addServiceToCar("driver", {
-    carId: car.carId,
-    cost: 60,
-    description: "Start boundary",
-    mileage: 30100,
-    notes: "",
-    serviceDate: "02/01/26",
-    serviceType: "Oil Change"
-  });
-  await harness.cars.addServiceToCar("driver", {
-    carId: car.carId,
-    cost: 180,
-    description: "End boundary",
-    mileage: 30600,
-    notes: "",
-    serviceDate: "03/31/26",
-    serviceType: "Brake Service"
-  });
-  await harness.cars.addServiceToCar("driver", {
-    carId: car.carId,
-    cost: 90,
-    description: "Outside range",
-    mileage: 30900,
-    notes: "",
-    serviceDate: "04/01/26",
-    serviceType: "Inspection"
-  });
-
-  const summary = await harness.cars.getReportSummaryForUser("driver", {
-    carId: car.carId,
-    dateFrom: "2026-02-01",
-    dateTo: "2026-03-31"
-  });
-
-  assert.equal(summary.serviceCount, 2);
-  assert.equal(summary.totalExpenses, 240);
-  assert.deepEqual(
-    summary.services.map((service) => service.date),
-    ["03/31/26", "02/01/26"]
-  );
-});
-
-test("getReportSummaryForUser rejects invalid car ids", async () => {
-  const db = createMockDatabase();
-  harness.setMockDatabase(db);
-
-  await assert.rejects(
-    () => harness.cars.getReportSummaryForUser("driver", { carId: 0 }),
-    /must be a valid car ID/
-  );
-
-  await assert.rejects(
-    () => harness.cars.getReportSummaryForUser("driver", { carId: 1.5 }),
-    /must be a valid car ID/
-  );
-});
-
 test.todo("mileage corrections should persist after later service recalculation");
 
 function createMockDatabase(initialState = {}) {
@@ -460,10 +390,6 @@ async function loadCarsHarness() {
     sourcePath: path.resolve("lib", "car-insights.ts")
   });
   await transpileFile({
-    outputPath: path.join(tempDir, "reporting-core.mjs"),
-    sourcePath: path.resolve("lib", "reporting-core.ts")
-  });
-  await transpileFile({
     outputPath: path.join(tempDir, "service-types.mjs"),
     sourcePath: path.resolve("lib", "service-types.ts")
   });
@@ -482,7 +408,6 @@ async function loadCarsHarness() {
   const rewrittenCarsSource = carsSource
     .replaceAll('"@/lib/car-insights"', '"./car-insights.mjs"')
     .replaceAll('"@/lib/mongodb"', '"./mongodb.mjs"')
-    .replaceAll('"@/lib/reporting-core"', '"./reporting-core.mjs"')
     .replaceAll('"@/lib/service-types"', '"./service-types.mjs"');
 
   await transpileSource({

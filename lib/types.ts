@@ -125,28 +125,3 @@ export type AttentionItem = {
   serviceType: string;
   status: "due-soon" | "overdue";
 };
-
-export type ReportServiceRow = {
-  carId: number;
-  carName: string;
-  cost: number | null;
-  date: string;
-  description: string;
-  mileage: number;
-  notes: string;
-  serviceId: number;
-  serviceType: string;
-};
-
-export type ReportSummary = {
-  averageServiceCost: number | null;
-  dateFrom: string | null;
-  dateTo: string | null;
-  highestCostService: ReportServiceRow | null;
-  selectedCarId: number | null;
-  serviceCount: number;
-  services: ReportServiceRow[];
-  servicesByCategory: CategoryExpenseItem[];
-  totalExpenses: number;
-  vehiclesInScope: number;
-};

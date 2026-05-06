@@ -13,7 +13,6 @@ import {
   roundCurrency
 } from "@/lib/car-insights";
 import { getDatabase } from "@/lib/mongodb";
-import { summarizeReportServices } from "@/lib/reporting-core";
 import { COMMON_SERVICE_TYPES } from "@/lib/service-types";
 import type {
   AttentionItem,
@@ -22,12 +21,9 @@ import type {
   DashboardOverview,
   DashboardRecentService,
   MileageHistoryItem,
-  ReportSummary,
   ServiceReminderRule,
   ServiceHistoryItem
 } from "@/lib/types";
-
-export { buildReportCsv } from "@/lib/reporting-core";
 
 type ServiceEntry = {
   serviceId: number;
@@ -115,12 +111,6 @@ type AddServiceInput = {
 };
 
 type UpdateServiceInput = AddServiceInput;
-
-type ReportFilters = {
-  carId?: number | null;
-  dateFrom?: string | null;
-  dateTo?: string | null;
-};
 
 export async function listCarsForUser(username: string): Promise<CarSummary[]> {
   const db = await getDatabase();
@@ -702,51 +692,6 @@ export async function getDashboardOverview(username: string): Promise<DashboardO
     totalExpenses,
     totalServiceRecords,
     totalVehicles
-  };
-}
-
-export async function getReportSummaryForUser(
-  username: string,
-  filters: ReportFilters = {}
-): Promise<ReportSummary> {
-  if (filters.carId !== undefined && filters.carId !== null) {
-    if (!Number.isInteger(filters.carId) || filters.carId <= 0) {
-      throw new Error("Report vehicle scope must be a valid car ID.");
-    }
-  }
-
-  const db = await getDatabase();
-  const cars = db.collection<CarDocument>("cars");
-  const carFilter =
-    filters.carId && Number.isInteger(filters.carId) && filters.carId > 0
-      ? { ownerUsername: username, carId: filters.carId }
-      : { ownerUsername: username };
-  const records = await cars.find(carFilter).sort({ carId: 1 }).toArray();
-
-  const services = records
-    .flatMap((car) =>
-      car.serviceHistory.map((service) => ({
-        carId: car.carId,
-        carName: `${car.year} ${car.make} ${car.model}`,
-        cost: service.cost,
-        date: service.date,
-        description: service.description,
-        mileage: service.mileage,
-        notes: service.notes,
-        serviceId: service.serviceId,
-        serviceType: service.serviceType
-      }))
-    );
-
-  return {
-    ...summarizeReportServices({
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-      selectedCarId: filters.carId ?? null,
-      services,
-      vehiclesInScope: records.length
-    }),
-    vehiclesInScope: records.length
   };
 }
 
