@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Deploy on self-hosted runner
         env:

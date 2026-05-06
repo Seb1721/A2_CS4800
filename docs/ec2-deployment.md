@@ -159,6 +159,12 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
+The deploy workflow targets the runner's default labels:
+
+- `self-hosted`
+- `Linux`
+- `X64`
+
 ### Configure the deployment path
 
 Add a GitHub repository variable:
