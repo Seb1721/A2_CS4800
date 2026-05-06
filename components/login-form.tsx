@@ -69,6 +69,10 @@ export function LoginForm() {
             <strong>Clear maintenance view</strong>
             <span>Recent service, reminders, and mileage live in one workflow.</span>
           </div>
+          <div className="feature-item">
+            <strong>Built for everyday use</strong>
+            <span>Open the dashboard, update the record, and move on.</span>
+          </div>
         </div>
       </section>
 
@@ -147,7 +151,7 @@ export function LoginForm() {
               <input
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 id="password"
-                minLength={12}
+                minLength={8}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 type="password"
@@ -158,7 +162,7 @@ export function LoginForm() {
                   <span className={`password-strength password-strength-${passwordStrength.tone}`}>
                     {passwordStrength.label}
                   </span>
-                  <span>Use at least 12 characters with a mix of uppercase, lowercase, numbers, and symbols.</span>
+                  <span>Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols.</span>
                 </div>
               ) : null}
             </div>
@@ -184,11 +188,11 @@ function getPasswordStrength(password: string) {
 
   let score = 0;
 
-  if (password.length >= 12) {
+  if (password.length >= 8) {
     score += 1;
   }
 
-  if (password.length >= 16) {
+  if (password.length >= 12) {
     score += 1;
   }
 

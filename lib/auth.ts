@@ -35,8 +35,8 @@ export async function createUser(
     throw new Error("Username must be at least 3 characters.");
   }
 
-  if (password.length < 12) {
-    throw new Error("Password must be at least 12 characters.");
+  if (password.length < 8) {
+    throw new Error("Password must be at least 8 characters.");
   }
 
   if (!isValidEmail(email)) {

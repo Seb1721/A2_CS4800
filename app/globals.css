@@ -167,18 +167,18 @@ input[type="number"],
 input[type="date"],
 select,
 textarea {
-  background: white;
-  border: 1px solid #ccd8e5;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #c9c3b8;
   border-radius: var(--radius-sm);
   color: var(--text);
-  padding: 13px 14px;
+  padding: 10px 12px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
   width: 100%;
 }
 
 input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(15, 92, 192, 0.12);
+  border-color: #315270;
+  box-shadow: 0 0 0 4px rgba(49, 82, 112, 0.12);
   outline: none;
 }
 
@@ -200,13 +200,13 @@ textarea {
 
 .brand-panel {
   background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 34%),
-    linear-gradient(180deg, rgba(247, 243, 236, 0.98), rgba(234, 228, 219, 0.98)),
-    #ece5da;
+    radial-gradient(circle at top left, rgba(219, 169, 92, 0.18), transparent 30%),
+    linear-gradient(160deg, rgba(32, 45, 58, 0.99), rgba(58, 74, 89, 0.96)),
+    #283542;
   border-radius: var(--radius-xl) 0 0 var(--radius-xl);
-  border: 1px solid #d6cec0;
+  border: 1px solid #394657;
   border-right: none;
-  color: #1f2b36;
+  color: #f4efe7;
   display: grid;
   align-content: start;
   gap: 0;
@@ -218,7 +218,7 @@ textarea {
 
 .brand-panel::after {
   background:
-    linear-gradient(90deg, rgba(31, 43, 54, 0.04), rgba(31, 43, 54, 0.01));
+    linear-gradient(90deg, rgba(219, 169, 92, 0.26), rgba(219, 169, 92, 0.02));
   border-radius: 999px;
   content: "";
   height: 1px;
@@ -228,7 +228,7 @@ textarea {
 }
 
 .brand-mark {
-  color: #14202b;
+  color: #f8f4ec;
   font-size: clamp(38px, 4.7vw, 58px);
   font-weight: 800;
   letter-spacing: -0.06em;
@@ -237,7 +237,7 @@ textarea {
 }
 
 .brand-summary {
-  color: #50606f;
+  color: rgba(236, 240, 244, 0.82);
   font-size: 14px;
   line-height: 1.65;
   margin: 0;
@@ -276,19 +276,19 @@ textarea {
 .feature-list {
   display: grid;
   gap: 10px;
-  margin-top: 118px;
+  margin-top: 96px;
   max-width: 340px;
 }
 
 .feature-item {
-  background: rgba(255, 255, 255, 0.48);
-  border: 1px solid rgba(31, 43, 54, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 12px 14px;
 }
 
 .feature-item strong {
-  color: #20303f;
+  color: #f2eee8;
   display: block;
   font-size: 13px;
   letter-spacing: 0.02em;
@@ -296,7 +296,7 @@ textarea {
 }
 
 .feature-item span {
-  color: #61707f;
+  color: rgba(227, 232, 237, 0.72);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -304,9 +304,9 @@ textarea {
 .auth-panel {
   align-items: stretch;
   background:
-    linear-gradient(180deg, rgba(250, 248, 244, 0.98), rgba(243, 239, 232, 0.98));
+    linear-gradient(180deg, rgba(243, 240, 234, 0.98), rgba(233, 228, 220, 0.98));
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
-  border: 1px solid #d6cec0;
+  border: 1px solid #d2cabd;
   border-left: none;
   display: grid;
   padding: 0;
