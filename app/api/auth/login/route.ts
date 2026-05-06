@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { ensureAppSetup } from "@/lib/app-setup";
-import { createSession, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSession, isAuthConfigurationError, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { isDatabaseUnavailableError } from "@/lib/mongodb";
+import { enforceRateLimit, isRateLimitError } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     await ensureAppSetup();
+    enforceRateLimit(request, "auth:login", 10);
 
     const body = await request.json().catch(() => null);
     const identifier = String(body?.username ?? "").trim().toLowerCase();
@@ -27,6 +29,19 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to log in.";
-    return NextResponse.json({ error: message }, { status: isDatabaseUnavailableError(error) ? 503 : 500 });
+    const status = isRateLimitError(error)
+      ? 429
+      : isDatabaseUnavailableError(error)
+        ? 503
+        : isAuthConfigurationError(error)
+          ? 500
+          : 500;
+    const response = NextResponse.json({ error: message }, { status });
+
+    if (isRateLimitError(error)) {
+      response.headers.set("Retry-After", String(error.retryAfterSeconds));
+    }
+
+    return response;
   }
 }

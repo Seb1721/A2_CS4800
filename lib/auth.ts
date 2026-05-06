@@ -9,9 +9,7 @@ import type { SessionUser, UserProfile } from "@/lib/types";
 
 const SESSION_COOKIE = "carkeeper_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 12;
-const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET || process.env.FLASK_SECRET_KEY || "dev-only-secret"
-);
+const AUTH_CONFIGURATION_ERROR = "Authentication configuration is missing.";
 
 type UserRecord = {
   _id?: ObjectId;
@@ -35,9 +33,7 @@ export async function createUser(
     throw new Error("Username must be at least 3 characters.");
   }
 
-  if (password.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
-  }
+  validatePasswordPolicy(password, username, email);
 
   if (!isValidEmail(email)) {
     throw new Error("Enter a valid email address.");
@@ -87,7 +83,7 @@ export async function createSession(username: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
-    .sign(secret);
+    .sign(getSessionSecret());
 }
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
@@ -99,7 +95,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSessionSecret());
     const username = typeof payload.username === "string" ? payload.username : null;
 
     if (!username) {
@@ -194,6 +190,10 @@ export async function clearSessionCookie(response: NextResponse) {
   });
 }
 
+export function isAuthConfigurationError(error: unknown) {
+  return error instanceof Error && error.message === AUTH_CONFIGURATION_ERROR;
+}
+
 function toUserProfile(user: UserRecord): UserProfile {
   return {
     createdAt: user.createdAt.toISOString(),
@@ -222,4 +222,47 @@ function shouldUseSecureCookies() {
   }
 
   return process.env.NODE_ENV === "production";
+}
+
+function getSessionSecret() {
+  const configuredSecret = process.env.AUTH_SECRET || process.env.FLASK_SECRET_KEY;
+  if (configuredSecret) {
+    return new TextEncoder().encode(configuredSecret);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(AUTH_CONFIGURATION_ERROR);
+  }
+
+  return new TextEncoder().encode("dev-only-secret");
+}
+
+function validatePasswordPolicy(password: string, username: string, email: string) {
+  if (password.length < 12) {
+    throw new Error("Password must be at least 12 characters.");
+  }
+
+  if (!/[a-z]/.test(password)) {
+    throw new Error("Password must include a lowercase letter.");
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    throw new Error("Password must include an uppercase letter.");
+  }
+
+  if (!/\d/.test(password)) {
+    throw new Error("Password must include a number.");
+  }
+
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    throw new Error("Password must include a symbol.");
+  }
+
+  const normalizedPassword = password.toLowerCase();
+  const emailLocalPart = email.split("@")[0] ?? "";
+  const blockedFragments = [username, emailLocalPart].filter((fragment) => fragment.length >= 3);
+
+  if (blockedFragments.some((fragment) => normalizedPassword.includes(fragment))) {
+    throw new Error("Password must not contain your username or email name.");
+  }
 }

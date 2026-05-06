@@ -31,7 +31,7 @@ body {
 }
 
 body {
-  background: #ece7df;
+  background: #16212b;
   color: var(--text);
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
@@ -116,7 +116,7 @@ button {
 .form-grid,
 .field-group {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .field-row {
@@ -129,7 +129,7 @@ button {
   color: #647384;
   display: grid;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -156,13 +156,13 @@ button {
 
 .field-hint {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 label {
   color: #344657;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -177,7 +177,8 @@ textarea {
   border: 1px solid #c9c3b8;
   border-radius: var(--radius-sm);
   color: var(--text);
-  padding: 10px 12px;
+  font-size: 16px;
+  padding: 12px 14px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
   width: 100%;
 }
@@ -196,12 +197,12 @@ textarea {
 .auth-shell {
   align-items: stretch;
   display: grid;
-  grid-template-columns: minmax(360px, 1.06fr) minmax(360px, 0.94fr);
+  grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
   gap: 0;
   margin: 0 auto;
-  min-height: min(760px, calc(100vh - 56px));
-  padding: 22px 20px;
-  width: min(1220px, 100%);
+  min-height: calc(100vh - 22px);
+  padding: 14px 20px 8px;
+  width: min(1320px, 100%);
 }
 
 .brand-panel {
@@ -219,19 +220,12 @@ textarea {
   gap: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 26px 30px;
+  padding: 30px 36px;
   position: relative;
 }
 
 .brand-panel::after {
-  background:
-    linear-gradient(90deg, rgba(219, 169, 92, 0.26), rgba(219, 169, 92, 0.02));
-  border-radius: 999px;
-  content: "";
-  height: 1px;
-  inset: auto 32px 122px 32px;
-  position: absolute;
-  width: auto;
+  content: none;
 }
 
 .brand-lockup {
@@ -243,7 +237,7 @@ textarea {
 
 .brand-mark {
   color: #f8f4ec;
-  font-size: clamp(38px, 4.7vw, 58px);
+  font-size: clamp(44px, 5.4vw, 67px);
   font-weight: 800;
   letter-spacing: -0.06em;
   line-height: 0.95;
@@ -253,10 +247,10 @@ textarea {
 
 .brand-subheader {
   color: rgba(244, 233, 215, 0.88);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   text-align: center;
   text-transform: uppercase;
 }
@@ -292,10 +286,10 @@ textarea {
 
 .feature-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 20px;
-  max-width: 390px;
+  margin-top: 24px;
+  max-width: 448px;
   width: 100%;
 }
 
@@ -304,7 +298,7 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   text-align: center;
-  padding: 9px 11px;
+  padding: 12px 14px;
 }
 
 .feature-item:last-child {
@@ -314,15 +308,15 @@ textarea {
 .feature-item strong {
   color: #f2eee8;
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.02em;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .feature-item span {
   color: rgba(227, 232, 237, 0.72);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .auth-panel {
@@ -355,29 +349,29 @@ textarea {
   gap: 0;
   justify-items: center;
   min-height: 100%;
-  padding: 26px 30px 22px;
+  padding: 30px 36px 24px;
 }
 
 .auth-card h2 {
   color: #172431;
-  font-size: 28px;
+  font-size: 32px;
   letter-spacing: -0.03em;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   text-align: center;
 }
 
 .auth-card p {
   color: #59687a;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   text-align: center;
 }
 
 .auth-switch {
   display: flex;
-  gap: 8px;
-  margin-bottom: 26px;
+  gap: 10px;
+  margin-bottom: 30px;
 }
 
 .switch-chip {
@@ -385,10 +379,10 @@ textarea {
   border-radius: 999px;
   color: #495666;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 9px 13px;
+  padding: 11px 15px;
   text-transform: uppercase;
 }
 
