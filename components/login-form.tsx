@@ -83,13 +83,15 @@ export function LoginForm() {
 
       <section className="auth-panel">
         <div className="auth-card">
+          <h2>{mode === "login" ? "Sign In" : "Create Account"}</h2>
+
           <div className="auth-switch">
             <button
               className={mode === "login" ? "switch-chip active" : "switch-chip"}
               onClick={() => setMode("login")}
               type="button"
             >
-              Log In
+              Sign In
             </button>
             <button
               className={mode === "register" ? "switch-chip active" : "switch-chip"}
@@ -99,8 +101,6 @@ export function LoginForm() {
               Create Account
             </button>
           </div>
-
-          <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
 
           {error ? <div className="status-card error">{error}</div> : null}
 
@@ -170,7 +170,7 @@ export function LoginForm() {
               {isSubmitting
                 ? "Working..."
                 : mode === "login"
-                  ? "Log In"
+                  ? "Sign In"
                   : "Create Account"}
             </button>
           </form>

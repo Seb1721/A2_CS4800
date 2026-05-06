@@ -96,7 +96,7 @@ const emptyEditCarForm: EditCarFormState = {
 
 const emptyServiceForm = {
   carId: "",
-  serviceDate: todayIso(),
+  serviceDate: "",
   mileage: "",
   serviceType: serviceTypes[0],
   description: "",
@@ -107,13 +107,13 @@ const emptyServiceForm = {
 const emptyMileageForm = {
   carId: "",
   mileage: "",
-  date: todayIso(),
+  date: "",
   notes: "",
   allowCorrection: false
 };
 
 const emptyEditServiceForm = {
-  serviceDate: todayIso(),
+  serviceDate: "",
   mileage: "",
   serviceType: serviceTypes[0],
   description: "",
@@ -123,7 +123,7 @@ const emptyEditServiceForm = {
 
 const emptyEditMileageEntryForm = {
   mileage: "",
-  date: todayIso(),
+  date: "",
   notes: "",
   allowCorrection: false
 };
@@ -179,6 +179,14 @@ export function DashboardClient({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [deletingServiceId, setDeletingServiceId] = useState<number | null>(null);
   const [deletingMileageEntryId, setDeletingMileageEntryId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const today = todayIso();
+    setServiceForm((current) => (current.serviceDate ? current : { ...current, serviceDate: today }));
+    setMileageForm((current) => (current.date ? current : { ...current, date: today }));
+    setEditServiceForm((current) => (current.serviceDate ? current : { ...current, serviceDate: today }));
+    setEditMileageEntryForm((current) => (current.date ? current : { ...current, date: today }));
+  }, []);
 
   useEffect(() => {
     setCars(initialCars);
@@ -626,6 +634,7 @@ export function DashboardClient({
       setMileageForm({
         ...emptyMileageForm,
         carId: String(updatedCar.carId),
+        date: todayIso(),
         mileage: String(updatedCar.currentMileage)
       });
       await refreshCars();
@@ -672,6 +681,7 @@ export function DashboardClient({
         ...emptyServiceForm,
         carId: String(updatedCar.carId),
         mileage: String(updatedCar.currentMileage),
+        serviceDate: todayIso(),
         serviceType: current.serviceType
       }));
       await refreshCars();
@@ -1153,7 +1163,7 @@ function DashboardHomeView({
           label="Highest Mileage"
           subtitle={
             fleetHighlights.highestMileageVehicle
-              ? `${fleetHighlights.highestMileageVehicle.currentMileage.toLocaleString()} mi`
+              ? `${fleetHighlights.highestMileageVehicle.currentMileage.toLocaleString("en-US")} mi`
               : "No vehicles tracked"
           }
           title={fleetHighlights.highestMileageVehicle?.carName ?? "No vehicle available"}
@@ -1205,7 +1215,7 @@ function DashboardHomeView({
                     <span className="preview-sub">Last service {car.lastServiceDate}</span>
                   </span>
                   <span className="preview-row-stack preview-row-stack-end">
-                    <span className="preview-value">{car.currentMileage.toLocaleString()} mi</span>
+                    <span className="preview-value">{car.currentMileage.toLocaleString("en-US")} mi</span>
                     <span className="preview-meta">{formatCurrency(car.lifetimeExpenses)} lifetime cost</span>
                   </span>
                 </button>
@@ -1270,7 +1280,7 @@ function DashboardHomeView({
                     <span className="preview-main">{service.serviceType}</span>
                     <span className="preview-sub">{service.carName}</span>
                     <span className="preview-meta">
-                      {service.date} - {service.mileage.toLocaleString()} mi - {formatCurrency(service.cost)}
+                      {service.date} - {service.mileage.toLocaleString("en-US")} mi - {formatCurrency(service.cost)}
                     </span>
                   </button>
                 ))}
@@ -1302,7 +1312,7 @@ function GarageIndexView({
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
         <OverviewCard
           label="Average Mileage"
-          value={overview.averageMileage === null ? "N/A" : `${overview.averageMileage.toLocaleString()} mi`}
+          value={overview.averageMileage === null ? "N/A" : `${overview.averageMileage.toLocaleString("en-US")} mi`}
         />
         <OverviewCard label="Flagged Vehicles" value={String(overview.flaggedVehicleCount)} />
         <OverviewCard
@@ -1329,7 +1339,7 @@ function GarageIndexView({
                   <div className="garage-card-top">
                     <div>
                       <div className="garage-card-title">{car.carName}</div>
-                      <div className="garage-card-subtitle">{car.currentMileage.toLocaleString()} mi</div>
+                      <div className="garage-card-subtitle">{car.currentMileage.toLocaleString("en-US")} mi</div>
                     </div>
                     {reminder ? (
                       <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
@@ -1549,7 +1559,7 @@ function AnalyticsIndexView({
                   </span>
                   <span className="preview-row-stack preview-row-stack-end">
                     <span className="preview-value">{formatCurrency(car.lifetimeExpenses)}</span>
-                    <span className="preview-meta">{car.currentMileage.toLocaleString()} mi</span>
+                    <span className="preview-meta">{car.currentMileage.toLocaleString("en-US")} mi</span>
                   </span>
                 </div>
               ))}
@@ -1578,7 +1588,7 @@ function AnalyticsIndexView({
                 <span className="preview-row-stack preview-row-stack-end">
                   <span className="preview-value">{formatCurrency(service.cost)}</span>
                   <span className="preview-meta">
-                    {service.date} - {service.mileage.toLocaleString()} mi
+                    {service.date} - {service.mileage.toLocaleString("en-US")} mi
                   </span>
                 </span>
               </div>
@@ -1669,7 +1679,7 @@ function AccountWorkspaceView({
           </div>
           <div>
             <dt>Created</dt>
-            <dd>{profile ? new Date(profile.createdAt).toLocaleDateString("en-US") : "Unavailable"}</dd>
+            <dd>{profile ? formatProfileDate(profile.createdAt) : "Unavailable"}</dd>
           </div>
         </dl>
       </section>
@@ -1790,7 +1800,7 @@ function VehicleWorkspaceView({
   return (
     <div className="content-stack">
       <section className="overview-grid compact-shell">
-        <OverviewCard label="Current Mileage" value={`${car.currentMileage.toLocaleString()} mi`} />
+        <OverviewCard label="Current Mileage" value={`${car.currentMileage.toLocaleString("en-US")} mi`} />
         <OverviewCard label="Last Service" value={car.lastServiceDate} />
         <OverviewCard label="Service Records" value={String(car.serviceCount)} />
         <OverviewCard label="Lifetime Expenses" value={formatCurrency(car.lifetimeExpenses)} />
@@ -2015,7 +2025,7 @@ function VehicleWorkspaceView({
                   <tr key={service.serviceId}>
                     <td>{service.date}</td>
                     <td>{service.serviceType}</td>
-                    <td>{service.mileage.toLocaleString()} mi</td>
+                    <td>{service.mileage.toLocaleString("en-US")} mi</td>
                     <td>{formatCurrency(service.cost)}</td>
                     <td>{service.description || "N/A"}</td>
                     <td className="table-actions">
@@ -2140,7 +2150,7 @@ function VehicleWorkspaceView({
               {car.mileageHistory.map((entry) => (
                 <tr key={entry.entryId}>
                   <td>{entry.date}</td>
-                  <td>{entry.mileage.toLocaleString()} mi</td>
+                  <td>{entry.mileage.toLocaleString("en-US")} mi</td>
                   <td>{formatSourceLabel(entry.source)}</td>
                   <td>{entry.notes}</td>
                   <td className="table-actions">
@@ -2377,10 +2387,10 @@ function VehicleInsightsView({
   return (
     <div className="content-stack">
       <section className="overview-grid compact-shell">
-        <OverviewCard label="Miles In Scope" value={trendMilesDriven === null ? "N/A" : `${trendMilesDriven.toLocaleString()} mi`} />
+        <OverviewCard label="Miles In Scope" value={trendMilesDriven === null ? "N/A" : `${trendMilesDriven.toLocaleString("en-US")} mi`} />
         <OverviewCard
           label="Avg Monthly Miles"
-          value={trendAverageMonthlyMileage === null ? "N/A" : `${trendAverageMonthlyMileage.toLocaleString()} mi`}
+          value={trendAverageMonthlyMileage === null ? "N/A" : `${trendAverageMonthlyMileage.toLocaleString("en-US")} mi`}
         />
         <OverviewCard label="Avg Monthly Expense" value={formatCurrency(trendAverageMonthlyExpense)} />
         <OverviewCard
@@ -2480,7 +2490,7 @@ function VehicleInsightsView({
             <div className="timeline-card" key={entry.entryId}>
               <div className="timeline-top">
                 <div className="timeline-date">{entry.date}</div>
-                <div className="timeline-mileage">{entry.mileage.toLocaleString()} mi</div>
+                <div className="timeline-mileage">{entry.mileage.toLocaleString("en-US")} mi</div>
               </div>
               <div className="timeline-source">{formatSourceLabel(entry.source)}</div>
               <div className="timeline-notes">{entry.notes}</div>
@@ -2654,10 +2664,10 @@ function __REMOVE_ReminderWatchGroup() {
             </div>
             <div className="panel-item-copy">{item.reason}</div>
             <div className="panel-item-meta">
-              <span>{item.currentMileage.toLocaleString()} mi</span>
+              <span>{item.currentMileage.toLocaleString("en-US")} mi</span>
               <span>Last service {item.lastServiceDate}</span>
               <span>
-                {item.milesUntilDue === null ? "Mileage target N/A" : `${item.milesUntilDue.toLocaleString()} mi left`}
+                {item.milesUntilDue === null ? "Mileage target N/A" : `${item.milesUntilDue.toLocaleString("en-US")} mi left`}
               </span>
             </div>
             <div className="action-row">
@@ -2695,7 +2705,7 @@ function ReminderStatusCard({
         <div>
           <div className="reminder-rule-title">{reminder.serviceType}</div>
           <div className="reminder-rule-copy">
-            Every {reminder.intervalMiles.toLocaleString()} miles
+            Every {reminder.intervalMiles.toLocaleString("en-US")} miles
           </div>
         </div>
         <div className={`comparison-status ${reminder.needsAttention ? "warning" : "ok"}`}>
@@ -2712,15 +2722,15 @@ function ReminderStatusCard({
           Last service:{" "}
           {reminder.latestServiceDate === null
             ? "No matching service record"
-            : `${reminder.latestServiceDate} at ${reminder.latestServiceMileage?.toLocaleString() ?? "N/A"} mi`}
+            : `${reminder.latestServiceDate} at ${reminder.latestServiceMileage?.toLocaleString("en-US") ?? "N/A"} mi`}
         </span>
         <span>
           Next mileage target:{" "}
-          {reminder.nextServiceMileage === null ? "N/A" : `${reminder.nextServiceMileage.toLocaleString()} mi`}
+          {reminder.nextServiceMileage === null ? "N/A" : `${reminder.nextServiceMileage.toLocaleString("en-US")} mi`}
         </span>
         <span>
           Miles until due:{" "}
-          {reminder.milesUntilDue === null ? "N/A" : `${reminder.milesUntilDue.toLocaleString()} mi`}
+          {reminder.milesUntilDue === null ? "N/A" : `${reminder.milesUntilDue.toLocaleString("en-US")} mi`}
         </span>
       </div>
 
@@ -2756,7 +2766,7 @@ function MileageEntryCard({
       <div className="timeline-top">
         <div className="timeline-date">{entry.date}</div>
         <div className="timeline-actions">
-          <div className="timeline-mileage">{entry.mileage.toLocaleString()} mi</div>
+          <div className="timeline-mileage">{entry.mileage.toLocaleString("en-US")} mi</div>
           {entry.canEdit ? (
             <button className="btn btn-inline" onClick={() => startEditingMileageEntry(entry)} type="button">
               Edit
@@ -2814,7 +2824,7 @@ function TrendCard({
               </div>
               <div className="trend-value">
                 {prefix}
-                {Math.round(point.value).toLocaleString()}
+                {Math.round(point.value).toLocaleString("en-US")}
                 {suffix}
               </div>
             </div>
@@ -2865,6 +2875,10 @@ function formatCurrency(value: number | null) {
     style: "currency",
     currency: "USD"
   }).format(value);
+}
+
+function formatProfileDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC" }).format(new Date(value));
 }
 
 function createReminderRuleForm(existingRules: ReminderRuleForm[] = []): ReminderRuleForm {
