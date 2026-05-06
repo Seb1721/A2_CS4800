@@ -239,7 +239,7 @@ textarea {
   font-weight: 800;
   letter-spacing: -0.06em;
   line-height: 0.95;
-  margin-bottom: 16px;
+  margin-bottom: 28px;
 }
 
 .brand-subsection {
@@ -249,36 +249,6 @@ textarea {
   border-radius: 12px;
   max-width: 390px;
   padding: 14px 16px;
-}
-
-.brand-visual {
-  background:
-    linear-gradient(90deg, rgba(219, 169, 92, 0.3), rgba(219, 169, 92, 0.05)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  height: 74px;
-  margin-top: 14px;
-  max-width: 460px;
-  position: relative;
-}
-
-.brand-visual::before,
-.brand-visual::after {
-  background: rgba(244, 233, 215, 0.36);
-  border-radius: 999px;
-  content: "";
-  position: absolute;
-}
-
-.brand-visual::before {
-  height: 1px;
-  inset: 22px 18px auto 18px;
-}
-
-.brand-visual::after {
-  height: 1px;
-  inset: auto 18px 22px 72px;
 }
 
 .brand-subsection-label {
@@ -1518,7 +1488,7 @@ textarea {
 
   .brand-mark {
     font-size: 34px;
-    margin-bottom: 12px;
+    margin-bottom: 18px;
   }
 
   .brand-subsection {

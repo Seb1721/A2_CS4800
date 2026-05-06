@@ -68,8 +68,6 @@ export function LoginForm() {
           </p>
         </div>
 
-        <div aria-hidden="true" className="brand-visual" />
-
         <div className="feature-list">
           <div className="feature-item">
             <strong>Private by default</strong>
