@@ -101,11 +101,6 @@ export function LoginForm() {
           </div>
 
           <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
-          <p>
-            {mode === "login"
-              ? "Access your dashboard."
-              : "Create an account to start your garage."}
-          </p>
 
           {error ? <div className="status-card error">{error}</div> : null}
 
@@ -139,21 +134,15 @@ export function LoginForm() {
             ) : null}
 
             <div className="field-group">
-              <label htmlFor="username">Username</label>
+              <label htmlFor="username">Username/Email</label>
               <input
                 autoComplete="username"
                 id="username"
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder={mode === "login" ? "Username or email" : ""}
                 required
                 type="text"
                 value={username}
               />
-              <div className="field-hint">
-                {mode === "login"
-                  ? "You can sign in with either your username or your email address."
-                  : ""}
-              </div>
             </div>
 
             <div className="field-group">
