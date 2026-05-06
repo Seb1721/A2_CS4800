@@ -13,24 +13,15 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy on self-hosted runner
         env:
-          EC2_APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          APP_DIR: ${{ vars.EC2_APP_DIR }}
           DEPLOY_BRANCH: ${{ github.ref_name }}
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          envs: EC2_APP_DIR,DEPLOY_BRANCH
-          script: |
-            set -e
-            APP_DIR="${EC2_APP_DIR:-$HOME/A2_CS4800}"
-            cd "$APP_DIR"
-            git fetch origin "$DEPLOY_BRANCH"
-            git checkout "$DEPLOY_BRANCH"
-            git pull --ff-only origin "$DEPLOY_BRANCH"
-            chmod +x scripts/deploy-ec2.sh
-            ./scripts/deploy-ec2.sh
+        run: |
+          set -e
+          APP_DIR="${APP_DIR:-$HOME/app}"
+          cd "$APP_DIR"
+          chmod +x scripts/deploy-ec2.sh
+          APP_DIR="$APP_DIR" DEPLOY_BRANCH="$DEPLOY_BRANCH" bash scripts/deploy-ec2.sh

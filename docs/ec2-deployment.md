@@ -131,17 +131,40 @@ sudo certbot renew --dry-run
 
 After HTTPS is active, set `COOKIE_SECURE=true` in the server env file and restart the app.
 
-## 6. Automatic Deployment from GitHub
+## 6. Automatic Deployment From GitHub
+
+The safer deployment path is to run GitHub Actions on a self-hosted runner installed on the EC2 instance instead of opening SSH to GitHub's hosted runners.
+
+Important: GitHub recommends extra caution with self-hosted runners on public repositories because untrusted workflow code can run on the machine. This setup is best for private repositories, or for repositories where you tightly control which workflows can execute on the self-hosted runner.
 
 The workflow at `.github/workflows/deploy.yml` deploys on pushes to `main` and `carkeeper_webapp_next.js`. It deploys the branch that triggered the workflow.
 
-Add these GitHub repository secrets:
+### Add the self-hosted runner on EC2
 
-- `EC2_HOST`: the Elastic IP or domain
-- `EC2_USER`: usually `ubuntu` on Ubuntu, `ec2-user` on Amazon Linux
-- `EC2_SSH_KEY`: private SSH key that can log into the EC2 instance
-- `EC2_APP_DIR`: optional; defaults to `~/app`
+In GitHub, open:
 
-The EC2 instance also needs Git access to the repository. For a private repo, add a deploy key in GitHub and put the matching private key on the EC2 instance, or use an HTTPS token-backed remote.
+- `Repository -> Settings -> Actions -> Runners -> New self-hosted runner`
 
-After that, every push to either deployment branch will SSH into EC2, pull the latest code, run tests, build, and reload PM2.
+Choose `Linux` and `x64`, then run the generated commands on the EC2 instance in a separate directory such as:
+
+```bash
+mkdir -p ~/actions-runner && cd ~/actions-runner
+```
+
+After `config.sh` finishes, install the runner as a service:
+
+```bash
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+### Configure the deployment path
+
+Add a GitHub repository variable:
+
+- `EC2_APP_DIR`: `/home/ec2-user/app`
+
+The EC2 instance still needs Git access to the repository. For a private repo, add a deploy key in GitHub and put the matching private key on the EC2 instance, or use an HTTPS token-backed remote.
+
+After that, every push to either deployment branch will run the deployment job directly on the EC2 instance, pull the latest code, run tests, build, and reload PM2.

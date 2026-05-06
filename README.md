@@ -101,6 +101,8 @@ Use `EC2` if you want MongoDB Atlas to allowlist one stable server IP instead of
 
 Use `Amplify Hosting` if you want the simplest managed Next.js deployment and are comfortable with Atlas network access tradeoffs.
 
+The recommended EC2 automation path is a GitHub Actions self-hosted runner on the instance, so you do not need to open SSH access broadly for GitHub-hosted runners.
+
 This repo includes [amplify.yml](./amplify.yml), which uses:
 
 - `npm ci`
