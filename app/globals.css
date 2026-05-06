@@ -251,6 +251,36 @@ textarea {
   padding: 14px 16px;
 }
 
+.brand-visual {
+  background:
+    linear-gradient(90deg, rgba(219, 169, 92, 0.3), rgba(219, 169, 92, 0.05)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  height: 74px;
+  margin-top: 14px;
+  max-width: 460px;
+  position: relative;
+}
+
+.brand-visual::before,
+.brand-visual::after {
+  background: rgba(244, 233, 215, 0.36);
+  border-radius: 999px;
+  content: "";
+  position: absolute;
+}
+
+.brand-visual::before {
+  height: 1px;
+  inset: 22px 18px auto 18px;
+}
+
+.brand-visual::after {
+  height: 1px;
+  inset: auto 18px 22px 72px;
+}
+
 .brand-subsection-label {
   color: rgba(244, 233, 215, 0.88);
   font-size: 11px;
@@ -301,7 +331,7 @@ textarea {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 28px;
+  margin-top: 16px;
   max-width: 460px;
 }
 
@@ -1414,6 +1444,11 @@ textarea {
 }
 
 @media (max-width: 780px) {
+  .brand-visual {
+    height: 58px;
+    max-width: none;
+  }
+
   .feature-list {
     grid-template-columns: 1fr;
     margin-top: 18px;
@@ -1494,6 +1529,11 @@ textarea {
   .brand-summary {
     font-size: 13px;
     line-height: 1.55;
+  }
+
+  .brand-visual {
+    height: 48px;
+    margin-top: 12px;
   }
 
   .feature-list {
@@ -1620,7 +1660,7 @@ textarea {
 
 .content-stack {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .two-column-shell {
@@ -1634,7 +1674,7 @@ textarea {
 .dashboard-panels,
 .records-grid {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -1645,7 +1685,7 @@ textarea {
 
 .dashboard-side-stack {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .records-grid {
@@ -1711,6 +1751,20 @@ textarea {
 .workspace-panel-header p {
   color: var(--muted);
   margin: 0;
+}
+
+.section-pager {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.section-pager-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: center;
 }
 
 .section-link {
@@ -1907,10 +1961,24 @@ textarea {
   min-height: 70px;
 }
 
+.analytics-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analytics-preview-row {
+  cursor: default;
+}
+
 .inline-edit-form {
   border-top: 1px solid var(--border);
   margin-top: 16px;
   padding-top: 16px;
+}
+
+.inline-unfold-form {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
 }
 
 .workspace-record-panel .inline-edit-form {

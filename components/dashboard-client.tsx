@@ -133,6 +133,8 @@ const emptyProfileForm = {
   email: ""
 };
 
+const FLASH_MESSAGE_KEY = "carkeeper-flash-message";
+
 export function DashboardClient({
   attentionItems: initialAttentionItems,
   initialCars,
@@ -225,6 +227,26 @@ export function DashboardClient({
 
     router.refresh();
   }, [pathname, router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedMessage = window.sessionStorage.getItem(FLASH_MESSAGE_KEY);
+    if (!storedMessage) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(FLASH_MESSAGE_KEY);
+
+    try {
+      const parsed = JSON.parse(storedMessage) as { text: string; type: "success" | "error" };
+      setMessage(parsed);
+    } catch {
+      // Ignore malformed flash messages.
+    }
+  }, [pathname]);
 
   function updateCarField(field: keyof CarFormState, value: string | ReminderRuleForm[]) {
     setCarForm((current) => ({ ...current, [field]: value }));
@@ -404,6 +426,14 @@ export function DashboardClient({
     router.push(`/garage/${carId}/insights`);
   }
 
+  function pushFlashMessage(text: string, type: "success" | "error" = "success") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem(FLASH_MESSAGE_KEY, JSON.stringify({ text, type }));
+  }
+
   function primeServiceForm(car: Pick<CarDetails, "carId" | "currentMileage">, serviceType?: string) {
     setServiceForm({
       ...emptyServiceForm,
@@ -470,12 +500,8 @@ export function DashboardClient({
         make: createdCar.make,
         year: createdCar.year
       });
-      if (view === "new-vehicle") {
-        router.push(`/garage/${createdCar.carId}`);
-        return;
-      }
-
-      setMessage({ type: "success", text: "Vehicle created and added to your garage." });
+      pushFlashMessage("Car entry successfully created.");
+      router.push("/garage");
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Could not add car." });
     }
@@ -599,7 +625,8 @@ export function DashboardClient({
       syncSelectedCar(updatedCar);
       setMileageForm({
         ...emptyMileageForm,
-        carId: String(updatedCar.carId)
+        carId: String(updatedCar.carId),
+        mileage: String(updatedCar.currentMileage)
       });
       await refreshCars();
       await refreshServerData();
@@ -644,6 +671,7 @@ export function DashboardClient({
       setServiceForm((current) => ({
         ...emptyServiceForm,
         carId: String(updatedCar.carId),
+        mileage: String(updatedCar.currentMileage),
         serviceType: current.serviceType
       }));
       await refreshCars();
@@ -963,7 +991,7 @@ export function DashboardClient({
           Garage
         </Link>
         <Link className={`workspace-nav-link ${view === "services" ? "active" : ""}`} href="/services">
-          Services
+          Analytics
         </Link>
         <Link className={`workspace-nav-link ${view === "account" ? "active" : ""}`} href="/account">
           Account
@@ -1007,7 +1035,12 @@ export function DashboardClient({
       ) : null}
 
       {view === "services" ? (
-        <ServicesIndexView openVehiclePage={openVehiclePage} services={serviceFeedRows} />
+        <AnalyticsIndexView
+          attentionItems={attentionItems}
+          cars={cars}
+          overview={overview}
+          recentServices={serviceFeedRows}
+        />
       ) : null}
 
       {view === "account" ? (
@@ -1220,7 +1253,7 @@ function DashboardHomeView({
                 <p>Latest work logged across your garage.</p>
               </div>
               <Link className="section-link" href="/services">
-                View All
+                Open Analytics
               </Link>
             </div>
             {recentServices.length === 0 ? (
@@ -1438,54 +1471,122 @@ function VehicleCreateView({
   );
 }
 
-function ServicesIndexView({
-  openVehiclePage,
-  services
+function AnalyticsIndexView({
+  attentionItems,
+  cars,
+  overview,
+  recentServices
 }: {
-  openVehiclePage: (carId: number) => void;
-  services: DashboardRecentService[];
+  attentionItems: AttentionItem[];
+  cars: CarSummary[];
+  overview: DashboardOverview;
+  recentServices: DashboardRecentService[];
 }) {
+  const topCostVehicles = [...cars]
+    .sort((left, right) => right.lifetimeExpenses - left.lifetimeExpenses)
+    .slice(0, 5);
+  const serviceCosts = recentServices.filter(
+    (service): service is DashboardRecentService & { cost: number } => service.cost !== null
+  );
+  const totalTrackedServiceCost = serviceCosts.reduce((sum, service) => sum + service.cost, 0);
+  const averageTrackedServiceCost = serviceCosts.length
+    ? totalTrackedServiceCost / serviceCosts.length
+    : null;
+
   return (
-    <section className="workspace-panel">
-      <div className="workspace-panel-header">
-        <div>
-          <h2>Service Records</h2>
-          <p>Open the vehicle record to update, correct, or delete service history.</p>
-        </div>
+    <div className="content-stack">
+      <section className="overview-grid compact-shell">
+        <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
+        <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
+        <OverviewCard label="Total Spend" value={formatCurrency(overview.totalExpenses)} />
+        <OverviewCard label="Avg Service Cost" value={formatCurrency(overview.averageServiceCost)} />
+      </section>
+
+      <div className="records-grid analytics-grid">
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Cost Summary</h2>
+              <p>High-level service spending across the garage.</p>
+            </div>
+          </div>
+          <div className="detail-list">
+            <div>
+              <dt>Tracked Service Cost</dt>
+              <dd>{formatCurrency(totalTrackedServiceCost)}</dd>
+            </div>
+            <div>
+              <dt>Average Logged Service</dt>
+              <dd>{formatCurrency(averageTrackedServiceCost)}</dd>
+            </div>
+            <div>
+              <dt>Flagged Vehicles</dt>
+              <dd>{overview.flaggedVehicleCount}</dd>
+            </div>
+            <div>
+              <dt>Attention Items</dt>
+              <dd>{attentionItems.length}</dd>
+            </div>
+          </div>
+        </section>
+
+        <section className="workspace-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>Highest Cost Vehicles</h2>
+              <p>The vehicles absorbing the most recorded spend so far.</p>
+            </div>
+          </div>
+          {topCostVehicles.length === 0 ? (
+            <div className="empty-inline">Vehicle spending will appear here once you log service costs.</div>
+          ) : (
+            <div className="preview-list">
+              {topCostVehicles.map((car) => (
+                <div className="preview-row analytics-preview-row" key={car.carId}>
+                  <span className="preview-row-stack">
+                    <span className="preview-main">{car.carName}</span>
+                    <span className="preview-sub">{car.serviceCount} service records</span>
+                  </span>
+                  <span className="preview-row-stack preview-row-stack-end">
+                    <span className="preview-value">{formatCurrency(car.lifetimeExpenses)}</span>
+                    <span className="preview-meta">{car.currentMileage.toLocaleString()} mi</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
-      {services.length === 0 ? (
-        <div className="empty-inline">No service records yet.</div>
-      ) : (
-        <table className="workspace-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Vehicle</th>
-              <th>Category</th>
-              <th>Mileage</th>
-              <th>Cost</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.map((service) => (
-              <tr key={`${service.carId}-${service.serviceId}`}>
-                <td>{service.date}</td>
-                <td>{service.carName}</td>
-                <td>{service.serviceType}</td>
-                <td>{service.mileage.toLocaleString()} mi</td>
-                <td>{formatCurrency(service.cost)}</td>
-                <td className="table-actions">
-                  <button className="btn btn-inline" onClick={() => openVehiclePage(service.carId)} type="button">
-                    Open Vehicle
-                  </button>
-                </td>
-              </tr>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Recent Activity</h2>
+            <p>The latest service work recorded across every vehicle.</p>
+          </div>
+        </div>
+        {recentServices.length === 0 ? (
+          <div className="empty-inline">No service records yet.</div>
+        ) : (
+          <div className="preview-list">
+            {recentServices.slice(0, 10).map((service) => (
+              <div className="preview-row analytics-preview-row" key={`${service.carId}-${service.serviceId}`}>
+                <span className="preview-row-stack">
+                  <span className="preview-main">{service.serviceType}</span>
+                  <span className="preview-sub">{service.carName}</span>
+                </span>
+                <span className="preview-row-stack preview-row-stack-end">
+                  <span className="preview-value">{formatCurrency(service.cost)}</span>
+                  <span className="preview-meta">
+                    {service.date} - {service.mileage.toLocaleString()} mi
+                  </span>
+                </span>
+              </div>
             ))}
-          </tbody>
-        </table>
-      )}
-    </section>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -1662,6 +1763,14 @@ function VehicleWorkspaceView({
   updateMileageField: (field: keyof typeof emptyMileageForm, value: string | boolean) => void;
   updateServiceField: (field: keyof typeof emptyServiceForm, value: string) => void;
 }) {
+  const [showVehicleSettings, setShowVehicleSettings] = useState(false);
+  const [serviceHistoryPage, setServiceHistoryPage] = useState(0);
+
+  useEffect(() => {
+    setShowVehicleSettings(false);
+    setServiceHistoryPage(0);
+  }, [car?.carId]);
+
   if (!car) {
     return (
       <section className="workspace-panel">
@@ -1669,6 +1778,14 @@ function VehicleWorkspaceView({
       </section>
     );
   }
+
+  const serviceHistoryPageSize = 4;
+  const serviceHistoryPageCount = Math.max(1, Math.ceil(car.serviceHistory.length / serviceHistoryPageSize));
+  const activeServiceHistoryPage = Math.min(serviceHistoryPage, serviceHistoryPageCount - 1);
+  const visibleServiceHistory = car.serviceHistory.slice(
+    activeServiceHistoryPage * serviceHistoryPageSize,
+    activeServiceHistoryPage * serviceHistoryPageSize + serviceHistoryPageSize
+  );
 
   return (
     <div className="content-stack">
@@ -1729,12 +1846,13 @@ function VehicleWorkspaceView({
                 <label htmlFor="mileageValue">Mileage</label>
                 <input
                   id="mileageValue"
-                  min="0"
+                  min={mileageForm.allowCorrection ? 0 : car.currentMileage}
                   onChange={(event) => updateMileageField("mileage", event.target.value)}
                   required
                   type="number"
                   value={mileageForm.mileage}
                 />
+                <div className="field-hint">Starts from the current recorded mileage by default.</div>
               </div>
             </div>
             <div className="field-group">
@@ -1784,12 +1902,13 @@ function VehicleWorkspaceView({
                 <label htmlFor="serviceMileage">Mileage at Service</label>
                 <input
                   id="serviceMileage"
-                  min="0"
+                  min={car.currentMileage}
                   onChange={(event) => updateServiceField("mileage", event.target.value)}
                   required
                   type="number"
                   value={serviceForm.mileage}
                 />
+                <div className="field-hint">Starts from the current recorded mileage by default.</div>
               </div>
             </div>
             <div className="field-row">
@@ -1849,8 +1968,33 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Service History</h2>
-              <p>Edit or delete incorrect records.</p>
+              <p>Edit or delete incorrect records. Use the arrows to move through older entries.</p>
             </div>
+            {car.serviceHistory.length > serviceHistoryPageSize ? (
+              <div className="section-pager">
+                <button
+                  className="btn btn-inline"
+                  disabled={activeServiceHistoryPage === 0}
+                  onClick={() => setServiceHistoryPage((current) => Math.max(0, current - 1))}
+                  type="button"
+                >
+                  Prev
+                </button>
+                <span className="section-pager-label">
+                  {activeServiceHistoryPage + 1} / {serviceHistoryPageCount}
+                </span>
+                <button
+                  className="btn btn-inline"
+                  disabled={activeServiceHistoryPage >= serviceHistoryPageCount - 1}
+                  onClick={() =>
+                    setServiceHistoryPage((current) => Math.min(serviceHistoryPageCount - 1, current + 1))
+                  }
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
           </div>
           {car.serviceHistory.length === 0 ? (
             <div className="empty-inline">No service records yet.</div>
@@ -1867,7 +2011,7 @@ function VehicleWorkspaceView({
                 </tr>
               </thead>
               <tbody>
-                {car.serviceHistory.map((service) => (
+                {visibleServiceHistory.map((service) => (
                   <tr key={service.serviceId}>
                     <td>{service.date}</td>
                     <td>{service.serviceType}</td>
@@ -2076,103 +2220,114 @@ function VehicleWorkspaceView({
         </section>
       </div>
 
-      <section className="workspace-panel">
+      <section className="workspace-panel workspace-settings-panel">
         <div className="workspace-panel-header">
           <div>
             <h2>Vehicle Settings</h2>
-            <p>Edit the base vehicle profile or delete the record.</p>
+            <p>Open this only when you need to update the base vehicle profile or delete the record.</p>
           </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowVehicleSettings((current) => !current)}
+            type="button"
+          >
+            {showVehicleSettings ? "Hide Settings" : "Open Settings"}
+          </button>
         </div>
-        <form className="form-grid" onSubmit={handleSaveVehicle}>
-          <div className="field-row">
+        {showVehicleSettings ? (
+          <form className="form-grid inline-unfold-form" onSubmit={handleSaveVehicle}>
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="editMake">Make</label>
+                <input
+                  id="editMake"
+                  onChange={(event) => updateEditCarField("make", event.target.value)}
+                  required
+                  type="text"
+                  value={editCarForm.make}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="editModel">Model</label>
+                <input
+                  id="editModel"
+                  onChange={(event) => updateEditCarField("model", event.target.value)}
+                  required
+                  type="text"
+                  value={editCarForm.model}
+                />
+              </div>
+            </div>
+
+            <div className="field-row">
+              <div className="field-group">
+                <label htmlFor="editYear">Year</label>
+                <input
+                  id="editYear"
+                  min="1900"
+                  onChange={(event) => updateEditCarField("year", event.target.value)}
+                  required
+                  type="number"
+                  value={editCarForm.year}
+                />
+              </div>
+              <div className="field-group">
+                <label htmlFor="editMileage">Current Mileage</label>
+                <input
+                  id="editMileage"
+                  min="0"
+                  onChange={(event) => updateEditCarField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={editCarForm.mileage}
+                />
+              </div>
+            </div>
+
             <div className="field-group">
-              <label htmlFor="editMake">Make</label>
+              <label htmlFor="editImageUrl">Image URL</label>
               <input
-                id="editMake"
-                onChange={(event) => updateEditCarField("make", event.target.value)}
-                required
+                id="editImageUrl"
+                onChange={(event) => updateEditCarField("imageUrl", event.target.value)}
                 type="text"
-                value={editCarForm.make}
+                value={editCarForm.imageUrl}
               />
             </div>
-            <div className="field-group">
-              <label htmlFor="editModel">Model</label>
-              <input
-                id="editModel"
-                onChange={(event) => updateEditCarField("model", event.target.value)}
-                required
-                type="text"
-                value={editCarForm.model}
-              />
-            </div>
-          </div>
 
-          <div className="field-row">
-            <div className="field-group">
-              <label htmlFor="editYear">Year</label>
-              <input
-                id="editYear"
-                min="1900"
-                onChange={(event) => updateEditCarField("year", event.target.value)}
-                required
-                type="number"
-                value={editCarForm.year}
-              />
-            </div>
-            <div className="field-group">
-              <label htmlFor="editMileage">Current Mileage</label>
-              <input
-                id="editMileage"
-                min="0"
-                onChange={(event) => updateEditCarField("mileage", event.target.value)}
-                required
-                type="number"
-                value={editCarForm.mileage}
-              />
-            </div>
-          </div>
-
-          <div className="field-group">
-            <label htmlFor="editImageUrl">Image URL</label>
-            <input
-              id="editImageUrl"
-              onChange={(event) => updateEditCarField("imageUrl", event.target.value)}
-              type="text"
-              value={editCarForm.imageUrl}
+            <ReminderRuleEditor
+              mode="edit"
+              onAddRule={onAddRule}
+              onRemoveRule={onRemoveRule}
+              onUpdateRule={onUpdateRule}
+              rules={editCarForm.serviceReminderRules}
             />
-          </div>
 
-          <ReminderRuleEditor
-            mode="edit"
-            onAddRule={onAddRule}
-            onRemoveRule={onRemoveRule}
-            onUpdateRule={onUpdateRule}
-            rules={editCarForm.serviceReminderRules}
-          />
+            <label className="checkbox-row">
+              <input
+                checked={editCarForm.allowMileageCorrection}
+                onChange={(event) => updateEditCarField("allowMileageCorrection", event.target.checked)}
+                type="checkbox"
+              />
+              <span>Allow a lower mileage if you are correcting a previous value.</span>
+            </label>
 
-          <label className="checkbox-row">
-            <input
-              checked={editCarForm.allowMileageCorrection}
-              onChange={(event) => updateEditCarField("allowMileageCorrection", event.target.checked)}
-              type="checkbox"
-            />
-            <span>Allow a lower mileage if you are correcting a previous value.</span>
-          </label>
-
-          <div className="action-row">
-            <button className="btn btn-primary" disabled={isSavingVehicle} type="submit">
-              {isSavingVehicle ? "Saving..." : "Save Vehicle Changes"}
-            </button>
-            <button
-              className="btn btn-danger"
-              disabled={isDeletingVehicle}
-              onClick={handleDeleteVehicle}
-              type="button"
-            >
-              {isDeletingVehicle ? "Deleting..." : "Delete Vehicle"}
-            </button>
-          </div>
-        </form>
+            <div className="action-row">
+              <button className="btn btn-primary" disabled={isSavingVehicle} type="submit">
+                {isSavingVehicle ? "Saving..." : "Save Vehicle Changes"}
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={isDeletingVehicle}
+                onClick={handleDeleteVehicle}
+                type="button"
+              >
+                {isDeletingVehicle ? "Deleting..." : "Delete Vehicle"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="empty-inline">Settings stay tucked away until you need to edit or remove the vehicle.</div>
+        )}
       </section>
     </div>
   );
@@ -2361,8 +2516,8 @@ function getPageMeta(view: DashboardView, selectedCar: CarDetails | null) {
       };
     case "services":
       return {
-        title: "Service History",
-        description: "A full-width service log with a direct path back to the owning vehicle."
+        title: "Fleet Analytics",
+        description: "Overall cost, activity, and maintenance summary across every vehicle in the garage."
       };
     case "account":
       return {
