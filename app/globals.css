@@ -134,6 +134,27 @@ button {
   grid-template-columns: 1fr 1fr;
 }
 
+.currency-input {
+  position: relative;
+}
+
+.currency-input span {
+  color: #445765;
+  font-size: 16px;
+  font-weight: 800;
+  left: 12px;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.currency-input input {
+  padding-left: 28px;
+}
+
 .password-guidance {
   color: #405261;
   display: grid;
@@ -633,9 +654,10 @@ textarea {
 
 .overview-value {
   color: #172431;
-  font-size: 28px;
+  font-size: clamp(20px, 2.2vw, 28px);
   font-weight: 800;
   letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .overview-meta {
@@ -1199,6 +1221,13 @@ textarea {
   margin-bottom: 16px;
 }
 
+.trend-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 .trend-grid {
   display: grid;
   gap: 14px;
@@ -1216,44 +1245,88 @@ textarea {
   color: #172431;
   font-size: 16px;
   font-weight: 800;
+}
+
+.trend-card-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.trend-bars {
-  display: grid;
-  gap: 10px;
+.trend-card-latest {
+  color: #172431;
+  font-size: 18px;
+  font-weight: 800;
 }
 
-.trend-bar-row {
-  align-items: center;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 82px minmax(0, 1fr) 86px;
+.line-chart {
+  position: relative;
 }
 
-.trend-label,
-.trend-value {
+.line-chart-empty {
   color: #455867;
+  font-size: 14px;
+  font-weight: 700;
+  inset: 116px 0 auto;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+}
+
+.line-chart svg {
+  display: block;
+  height: 260px;
+  overflow: visible;
+  width: 100%;
+}
+
+.line-chart-grid {
+  stroke: #e1d4c4;
+  stroke-dasharray: 5 6;
+  stroke-width: 1;
+}
+
+.line-chart-axis {
+  stroke: #bda98f;
+  stroke-width: 1.4;
+}
+
+.line-chart-area {
+  fill: rgba(217, 154, 52, 0.16);
+}
+
+.line-chart-line {
+  fill: none;
+  stroke: #203545;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.line-chart-point {
+  fill: #d99a34;
+  stroke: #fffaf3;
+  stroke-width: 2;
+}
+
+.line-chart-labels,
+.line-chart-scale {
+  color: #455867;
+  display: flex;
   font-size: 12px;
   font-weight: 700;
+  justify-content: space-between;
 }
 
-.trend-value {
-  color: #172431;
-  text-align: right;
+.line-chart-scale {
+  margin-top: -250px;
+  pointer-events: none;
 }
 
-.trend-bar-track {
-  background: #e7dccd;
-  border-radius: 999px;
-  height: 10px;
-  overflow: hidden;
-}
-
-.trend-bar-fill {
-  background: linear-gradient(90deg, #203545, #d99a34);
-  border-radius: 999px;
-  height: 100%;
+.line-chart-labels {
+  margin-top: 230px;
 }
 
 .category-section {
@@ -1395,6 +1468,12 @@ textarea {
   color: #20313f;
 }
 
+.btn-inline-strong {
+  background: #203545;
+  border-color: #203545;
+  color: #fffaf3;
+}
+
 .btn-inline-danger {
   background: #fff0ec;
   border-color: #d49488;
@@ -1474,6 +1553,10 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.action-row-submit {
+  margin-top: auto;
 }
 
 .btn-danger {
@@ -1798,6 +1881,17 @@ textarea {
   align-items: start;
 }
 
+.vehicle-action-grid .compact-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100%;
+}
+
+.vehicle-action-grid .form-grid {
+  align-content: start;
+  height: 100%;
+}
+
 .workspace-panel {
   background: linear-gradient(180deg, rgba(255, 250, 243, 0.99), rgba(240, 232, 220, 0.98));
   border: 1px solid var(--border);
@@ -1943,6 +2037,13 @@ textarea {
 .preview-row-stack-end {
   justify-items: end;
   text-align: right;
+}
+
+.vehicle-row-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .preview-main {
@@ -2118,6 +2219,23 @@ textarea {
 }
 
 @media (max-width: 1080px) {
+  .overview-card {
+    padding: 14px 16px;
+  }
+
+  .overview-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .overview-value {
+    font-size: clamp(18px, 2vw, 23px);
+  }
+
+  .overview-vehicle-list {
+    font-size: 15px;
+  }
+
   .workspace-header,
   .two-column-shell,
   .dashboard-panels,

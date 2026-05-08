@@ -5,6 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { loadWorkspaceData } from "@/lib/page-data";
 
 export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "Dashboard | CarKeeper"
+};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();

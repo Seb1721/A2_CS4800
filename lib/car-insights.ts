@@ -86,7 +86,6 @@ export function buildExpenseTrend(serviceHistory: ServiceEntryLike[]): TrendPoin
 
   return [...trendMap.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .slice(-6)
     .map(([, value]) => value);
 }
 
@@ -104,7 +103,6 @@ export function buildMileageTrend(mileageHistory: MileageEntryLike[]): TrendPoin
 
   return [...trendMap.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .slice(-6)
     .map(([, value]) => value);
 }
 

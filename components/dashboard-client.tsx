@@ -26,6 +26,7 @@ import type {
   CategoryExpenseItem,
   DashboardOverview,
   DashboardRecentService,
+  FleetInsightRecord,
   MaintenanceAppointment,
   MileageHistoryItem,
   ServiceReminderRule,
@@ -45,6 +46,7 @@ type DashboardView =
 
 type DashboardClientProps = {
   attentionItems: AttentionItem[];
+  fleetInsightRecords?: FleetInsightRecord[];
   initialCars: CarSummary[];
   initialSelectedCar?: CarDetails | null;
   overview: DashboardOverview;
@@ -146,8 +148,31 @@ const emptyProfileForm = {
 
 const FLASH_MESSAGE_KEY = "carkeeper-flash-message";
 
+type TrendPreset = "month" | "quarter" | "year" | "ytd" | "all";
+
+type TrendServiceRecord = {
+  carName?: string;
+  cost: number | null;
+  date: Date;
+  mileage: number;
+  serviceType: string;
+};
+
+type TrendMileageRecord = {
+  carId?: number;
+  carName?: string;
+  date: Date;
+  mileage: number;
+};
+
+type ChartPoint = {
+  label: string;
+  value: number | null;
+};
+
 export function DashboardClient({
   attentionItems: initialAttentionItems,
+  fleetInsightRecords = [],
   initialCars,
   initialSelectedCar = null,
   overview: initialOverview,
@@ -690,7 +715,6 @@ export function DashboardClient({
         },
         body: JSON.stringify({
           allowCorrection: mileageForm.allowCorrection,
-          date: mileageForm.date,
           mileage: Number(mileageForm.mileage),
           notes: mileageForm.notes
         })
@@ -870,7 +894,6 @@ export function DashboardClient({
           },
           body: JSON.stringify({
             allowCorrection: editMileageEntryForm.allowCorrection,
-            date: editMileageEntryForm.date,
             mileage: Number(editMileageEntryForm.mileage),
             notes: editMileageEntryForm.notes
           })
@@ -1003,6 +1026,26 @@ export function DashboardClient({
         mileage: entry.mileage
       }))
     : [];
+  const fleetServiceTypeOptions = Array.from(
+    new Set(fleetInsightRecords.flatMap((car) => car.serviceHistory.map((service) => service.serviceType)))
+  ).sort();
+  const fleetTrendServices: TrendServiceRecord[] = fleetInsightRecords.flatMap((car) =>
+    car.serviceHistory.map((service) => ({
+      carName: car.carName,
+      cost: service.cost,
+      date: parseDisplayDate(service.date),
+      mileage: service.mileage,
+      serviceType: service.serviceType
+    }))
+  );
+  const fleetTrendMileage: TrendMileageRecord[] = fleetInsightRecords.flatMap((car) =>
+    car.mileageHistory.map((entry) => ({
+      carId: car.carId,
+      carName: car.carName,
+      date: parseDisplayDate(entry.date),
+      mileage: entry.mileage
+    }))
+  );
   const filteredTrendServices = filterServiceHistoryByTrend(trendServiceHistory, {
     dateFrom: trendDateFromValue,
     dateTo: trendDateToValue,
@@ -1014,15 +1057,39 @@ export function DashboardClient({
   });
   const trendMileagePoints = buildMileageTrend(filteredTrendMileage);
   const trendExpensePoints = buildExpenseTrend(filteredTrendServices);
+  const trendMileageChartPoints = toWindowedChartPoints(trendMileagePoints, trendDateFrom, trendDateTo);
+  const trendExpenseChartPoints = toWindowedChartPoints(trendExpensePoints, trendDateFrom, trendDateTo);
   const trendCategoryExpenses = buildExpenseByCategory(filteredTrendServices);
   const trendMilesDriven = calculateMilesDriven(filteredTrendMileage);
   const trendAverageMonthlyMileage = calculateAverageMonthlyMileage(filteredTrendMileage);
   const trendAverageMonthlyExpense = calculateAverageMonthlyExpense(filteredTrendServices);
   const trendAverageMonthlyServiceFrequency = calculateAverageMonthlyServiceFrequency(filteredTrendServices);
+  const filteredFleetTrendServices = filterServiceHistoryByTrend(fleetTrendServices, {
+    dateFrom: trendDateFromValue,
+    dateTo: trendDateToValue,
+    serviceType: trendServiceTypeFilter === "all" ? null : trendServiceTypeFilter
+  });
+  const filteredFleetTrendMileage = filterMileageHistoryByTrend(fleetTrendMileage, {
+    dateFrom: trendDateFromValue,
+    dateTo: trendDateToValue
+  });
+  const fleetMileagePoints = buildFleetMileageTrend(filteredFleetTrendMileage);
+  const fleetExpensePoints = buildExpenseTrend(filteredFleetTrendServices);
+  const fleetMileageChartPoints = toWindowedChartPoints(fleetMileagePoints, trendDateFrom, trendDateTo);
+  const fleetExpenseChartPoints = toWindowedChartPoints(fleetExpensePoints, trendDateFrom, trendDateTo);
+  const fleetCategoryExpenses = buildExpenseByCategory(filteredFleetTrendServices);
+  const fleetMilesDriven = calculateFleetMilesDriven(filteredFleetTrendMileage);
+  const fleetAverageMonthlyMileage = calculateFleetAverageMonthlyMileage(filteredFleetTrendMileage);
+  const fleetAverageMonthlyExpense = calculateAverageMonthlyExpense(filteredFleetTrendServices);
+  const fleetAverageMonthlyServiceFrequency = calculateAverageMonthlyServiceFrequency(filteredFleetTrendServices);
   const fleetHighlights = getFleetHighlights(cars);
   const overdueAttentionItems = attentionItems.filter((item) => item.status === "overdue");
   const dueSoonAttentionItems = attentionItems.filter((item) => item.status === "due-soon");
   const serviceFeedRows = serviceFeed ?? recentServices;
+  const today = todayIso();
+  const maxTrendDate = addYearsIso(today, 1);
+  const vehicleTrendMinDate = selectedCar?.createdAt ?? today;
+  const fleetTrendMinDate = getEarliestIsoDate(fleetInsightRecords.map((car) => car.createdAt)) ?? today;
   const pageMeta = getPageMeta(view, selectedCar);
   const showWorkspaceUser = view === "dashboard" || view === "account";
 
@@ -1123,8 +1190,26 @@ export function DashboardClient({
         <AnalyticsIndexView
           attentionItems={attentionItems}
           cars={cars}
+          fleetAverageMonthlyExpense={fleetAverageMonthlyExpense}
+          fleetAverageMonthlyMileage={fleetAverageMonthlyMileage}
+          fleetAverageMonthlyServiceFrequency={fleetAverageMonthlyServiceFrequency}
+          fleetCategoryExpenses={fleetCategoryExpenses}
+          fleetExpensePoints={fleetExpenseChartPoints}
+          fleetInsightRecords={fleetInsightRecords}
+          fleetMileagePoints={fleetMileageChartPoints}
+          fleetMilesDriven={fleetMilesDriven}
           overview={overview}
           recentServices={serviceFeedRows}
+          serviceTypeOptions={fleetServiceTypeOptions}
+          maxTrendDate={maxTrendDate}
+          minTrendDate={fleetTrendMinDate}
+          setTrendDateFrom={(value) => setTrendDateFrom(clampIsoDate(value, fleetTrendMinDate, maxTrendDate))}
+          setTrendDateTo={(value) => setTrendDateTo(clampIsoDate(value, fleetTrendMinDate, maxTrendDate))}
+          setTrendServiceTypeFilter={setTrendServiceTypeFilter}
+          setTrendPreset={(preset) => applyTrendPreset(preset, setTrendDateFrom, setTrendDateTo, fleetTrendMinDate, maxTrendDate)}
+          trendDateFrom={trendDateFrom}
+          trendDateTo={trendDateTo}
+          trendServiceTypeFilter={trendServiceTypeFilter}
         />
       ) : null}
 
@@ -1186,19 +1271,22 @@ export function DashboardClient({
       {view === "vehicle-insights" ? (
         <VehicleInsightsView
           car={selectedCar}
+          maxTrendDate={maxTrendDate}
+          minTrendDate={vehicleTrendMinDate}
           serviceTypeOptions={serviceTypeOptions}
-          setTrendDateFrom={setTrendDateFrom}
-          setTrendDateTo={setTrendDateTo}
+          setTrendDateFrom={(value) => setTrendDateFrom(clampIsoDate(value, vehicleTrendMinDate, maxTrendDate))}
+          setTrendDateTo={(value) => setTrendDateTo(clampIsoDate(value, vehicleTrendMinDate, maxTrendDate))}
           setTrendServiceTypeFilter={setTrendServiceTypeFilter}
+          setTrendPreset={(preset) => applyTrendPreset(preset, setTrendDateFrom, setTrendDateTo, vehicleTrendMinDate, maxTrendDate)}
           trendAverageMonthlyExpense={trendAverageMonthlyExpense}
           trendAverageMonthlyMileage={trendAverageMonthlyMileage}
           trendAverageMonthlyServiceFrequency={trendAverageMonthlyServiceFrequency}
           trendCategoryExpenses={trendCategoryExpenses}
           trendDateFrom={trendDateFrom}
           trendDateTo={trendDateTo}
-          trendExpensePoints={trendExpensePoints}
+          trendExpensePoints={trendExpenseChartPoints}
           trendMilesDriven={trendMilesDriven}
-          trendMileagePoints={trendMileagePoints}
+          trendMileagePoints={trendMileageChartPoints}
           trendServiceTypeFilter={trendServiceTypeFilter}
         />
       ) : null}
@@ -1445,68 +1533,181 @@ function GarageIndexView({
   openVehiclePage: (carId: number) => void;
   overview: DashboardOverview;
 }) {
+  const fleetHighlights = getFleetHighlights(cars);
+  const watchGroups = groupAttentionItems(attentionItems);
+
   return (
     <div className="content-stack">
       <section className="overview-grid garage-overview-grid compact-shell">
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
-        <OverviewCard
-          label="Average Mileage"
-          value={overview.averageMileage === null ? "N/A" : `${overview.averageMileage.toLocaleString("en-US")} mi`}
-        />
+        <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
+        <OverviewCard label="Total Expenses" value={formatCurrency(overview.totalExpenses)} />
         <OverviewCard label="Flagged Vehicles" value={String(overview.flaggedVehicleCount)} />
-        <OverviewCard
-          label="Average Service Cost"
-          value={formatCurrency(overview.averageServiceCost)}
+      </section>
+
+      <section className="fleet-highlights">
+        <HighlightCard
+          label="Highest Mileage"
+          subtitle={
+            fleetHighlights.highestMileageVehicle
+              ? `${fleetHighlights.highestMileageVehicle.currentMileage.toLocaleString("en-US")} mi`
+              : "No vehicles tracked"
+          }
+          title={fleetHighlights.highestMileageVehicle?.carName ?? "No vehicle available"}
+        />
+        <HighlightCard
+          label="Most Expensive"
+          subtitle={
+            fleetHighlights.highestSpendVehicle
+              ? formatCurrency(fleetHighlights.highestSpendVehicle.lifetimeExpenses)
+              : "No spending yet"
+          }
+          title={fleetHighlights.highestSpendVehicle?.carName ?? "No vehicle available"}
+        />
+        <HighlightCard
+          label="Most Serviced"
+          subtitle={
+            fleetHighlights.mostServicedVehicle
+              ? `${fleetHighlights.mostServicedVehicle.serviceCount} records`
+              : "No service history"
+          }
+          title={fleetHighlights.mostServicedVehicle?.carName ?? "No vehicle available"}
         />
       </section>
 
-      <section className="workspace-panel">
-        <div className="workspace-panel-header">
-          <div>
-            <h2>All Vehicles</h2>
-            <p>Vehicle records, service status, and insights</p>
+      <div className="dashboard-panels">
+        <section className="workspace-panel dashboard-garage-panel">
+          <div className="workspace-panel-header">
+            <div>
+              <h2>All Vehicles</h2>
+              <p>Fleet records and mileage at a glance</p>
+            </div>
           </div>
-        </div>
-        {cars.length === 0 ? (
-          <div className="empty-inline">Your garage is ready for its first vehicle.</div>
-        ) : (
-          <div className="garage-card-grid">
-            {cars.map((car) => {
-              const reminder = attentionItems.find((item) => item.carId === car.carId);
-              return (
-                <article className="garage-card" key={car.carId}>
-                  <div className="garage-card-top">
-                    <div>
-                      <div className="garage-card-title">{car.carName}</div>
-                      <div className="garage-card-subtitle">{car.currentMileage.toLocaleString("en-US")} mi</div>
-                    </div>
-                    {reminder ? (
-                      <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
-                        {reminder.serviceType}
+
+          {cars.length === 0 ? (
+            <div className="empty-inline">Your garage is ready for its first vehicle.</div>
+          ) : (
+            <div className="dashboard-garage-list">
+              {cars.map((car) => {
+                const reminder = attentionItems.find((item) => item.carId === car.carId);
+
+                return (
+                  <div className="preview-row dashboard-garage-row" key={car.carId}>
+                    <span className="preview-row-stack">
+                      <span className="vehicle-row-title">
+                        <button className="comparison-link" onClick={() => openVehiclePage(car.carId)} type="button">
+                          {car.carName}
+                        </button>
+                        <button
+                          className="btn btn-inline btn-inline-strong"
+                          onClick={() => openVehicleInsightsPage(car.carId)}
+                          type="button"
+                        >
+                          Insights
+                        </button>
                       </span>
-                    ) : (
-                      <span className="comparison-status ok">On schedule</span>
-                    )}
+                      <span className="preview-sub">Last service {car.lastServiceDate}</span>
+                    </span>
+
+                    <span className="preview-row-stack preview-row-stack-end">
+                      <span className="preview-value">{car.currentMileage.toLocaleString("en-US")} mi</span>
+                      <span className="preview-meta">{formatCurrency(car.lifetimeExpenses)} lifetime cost</span>
+                    </span>
+
+                    <span className="preview-row-stack preview-row-stack-end">
+                      {reminder ? (
+                        <span className={`comparison-status ${reminder.status === "overdue" ? "warning" : "due-soon"}`}>
+                          {reminder.serviceType}
+                        </span>
+                      ) : (
+                        <span className="comparison-status ok">On schedule</span>
+                      )}
+                    </span>
                   </div>
-                  <div className="garage-card-meta">
-                    <span>{car.serviceCount} service records</span>
-                    <span>{formatCurrency(car.lifetimeExpenses)} lifetime cost</span>
-                    <span>Last service {car.lastServiceDate}</span>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <div className="dashboard-side-stack">
+          <section className="workspace-panel dashboard-watch-panel">
+            <div className="workspace-panel-header">
+              <div>
+                <h2>Maintenance Watch</h2>
+                <p>Priority service signals</p>
+              </div>
+            </div>
+
+            {watchGroups.length === 0 ? (
+              <div className="empty-inline">No maintenance alerts</div>
+            ) : (
+              <div className="watch-preview-list">
+                {watchGroups.map((group) => (
+                  <div className="watch-group-card" key={group.carId}>
+                    <div className="watch-group-title">
+                      <button className="comparison-link" onClick={() => openVehiclePage(group.carId)} type="button">
+                        {group.carName}
+                      </button>
+                    </div>
+
+                    <div className="watch-group-items">
+                      {group.items.slice(0, 3).map((item) => (
+                        <button
+                          className="preview-row"
+                          key={`${item.carId}-${item.type}-${item.serviceType}-${item.reason}`}
+                          onClick={() => openVehiclePage(item.carId)}
+                          type="button"
+                        >
+                          <span className="preview-row-stack">
+                            <span className="preview-main">{item.serviceType}</span>
+                            <span className="preview-sub">{item.reason}</span>
+                          </span>
+                          <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
+                            {item.status === "overdue" ? "Overdue" : item.type === "appointment" ? "Scheduled" : "Due Soon"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="garage-card-actions">
-                    <button className="btn btn-inline" onClick={() => openVehiclePage(car.carId)} type="button">
-                      Open Records
-                    </button>
-                    <button className="btn btn-inline" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
-                      Open Insights
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="workspace-panel dashboard-service-panel">
+            <div className="workspace-panel-header">
+              <div>
+                <h2>Fleet Summary</h2>
+                <p>Garage health metrics</p>
+              </div>
+            </div>
+
+            <dl className="detail-list">
+              <div>
+                <dt>Average Mileage</dt>
+                <dd>{overview.averageMileage === null ? "N/A" : `${overview.averageMileage.toLocaleString("en-US")} mi`}</dd>
+              </div>
+              <div>
+                <dt>Average Service Cost</dt>
+                <dd>{formatCurrency(overview.averageServiceCost)}</dd>
+              </div>
+              <div>
+                <dt>On Schedule</dt>
+                <dd>{overview.onScheduleCount} vehicles</dd>
+              </div>
+              <div>
+                <dt>Due Soon</dt>
+                <dd>{overview.dueSoonCount} alerts</dd>
+              </div>
+              <div>
+                <dt>Overdue</dt>
+                <dd>{overview.overdueCount} alerts</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1648,13 +1849,49 @@ function VehicleCreateView({
 function AnalyticsIndexView({
   attentionItems,
   cars,
+  fleetAverageMonthlyExpense,
+  fleetAverageMonthlyMileage,
+  fleetAverageMonthlyServiceFrequency,
+  fleetCategoryExpenses,
+  fleetExpensePoints,
+  fleetInsightRecords,
+  fleetMileagePoints,
+  fleetMilesDriven,
+  maxTrendDate,
+  minTrendDate,
   overview,
-  recentServices
+  recentServices,
+  serviceTypeOptions,
+  setTrendDateFrom,
+  setTrendDateTo,
+  setTrendPreset,
+  setTrendServiceTypeFilter,
+  trendDateFrom,
+  trendDateTo,
+  trendServiceTypeFilter
 }: {
   attentionItems: AttentionItem[];
   cars: CarSummary[];
+  fleetAverageMonthlyExpense: number | null;
+  fleetAverageMonthlyMileage: number | null;
+  fleetAverageMonthlyServiceFrequency: number | null;
+  fleetCategoryExpenses: CategoryExpenseItem[];
+  fleetExpensePoints: ChartPoint[];
+  fleetInsightRecords: FleetInsightRecord[];
+  fleetMileagePoints: ChartPoint[];
+  fleetMilesDriven: number | null;
+  maxTrendDate: string;
+  minTrendDate: string;
   overview: DashboardOverview;
   recentServices: DashboardRecentService[];
+  serviceTypeOptions: string[];
+  setTrendDateFrom: (value: string) => void;
+  setTrendDateTo: (value: string) => void;
+  setTrendPreset: (preset: TrendPreset) => void;
+  setTrendServiceTypeFilter: (value: string) => void;
+  trendDateFrom: string;
+  trendDateTo: string;
+  trendServiceTypeFilter: string;
 }) {
   const topCostVehicles = [...cars]
     .sort((left, right) => right.lifetimeExpenses - left.lifetimeExpenses)
@@ -1670,24 +1907,59 @@ function AnalyticsIndexView({
   return (
     <div className="content-stack">
       <section className="overview-grid compact-shell">
-        <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
-        <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
-        <OverviewCard label="Total Spent" value={formatCurrency(overview.totalExpenses)} />
-        <OverviewCard label="Avg Service Cost" value={formatCurrency(overview.averageServiceCost)} />
+        <OverviewCard label="Fleet Miles In Scope" value={fleetMilesDriven === null ? "N/A" : `${fleetMilesDriven.toLocaleString("en-US")} mi`} />
+        <OverviewCard
+          label="Avg Monthly Miles"
+          value={fleetAverageMonthlyMileage === null ? "N/A" : `${fleetAverageMonthlyMileage.toLocaleString("en-US")} mi`}
+        />
+        <OverviewCard label="Avg Monthly Expense" value={formatCurrency(fleetAverageMonthlyExpense)} />
+        <OverviewCard
+          label="Services / Month"
+          value={fleetAverageMonthlyServiceFrequency === null ? "N/A" : String(fleetAverageMonthlyServiceFrequency)}
+        />
       </section>
+
+      <TrendFilterPanel
+        dateFrom={trendDateFrom}
+        dateTo={trendDateTo}
+        maxDate={maxTrendDate}
+        minDate={minTrendDate}
+        onPreset={setTrendPreset}
+        onServiceTypeChange={setTrendServiceTypeFilter}
+        onSetDateFrom={setTrendDateFrom}
+        onSetDateTo={setTrendDateTo}
+        serviceType={trendServiceTypeFilter}
+        serviceTypeOptions={serviceTypeOptions}
+        title="Fleet Trend Window"
+      />
+
+      <div className="trend-grid">
+        <TimeSeriesChart
+          emptyLabel="Fleet mileage trends appear after odometer entries are recorded."
+          label="Fleet Mileage Trend"
+          points={fleetMileagePoints}
+          suffix=" mi"
+        />
+        <TimeSeriesChart
+          emptyLabel="Fleet spending trends appear after priced service records are added."
+          label="Fleet Spending Trend"
+          points={fleetExpensePoints}
+          prefix="$"
+        />
+      </div>
 
       <div className="records-grid analytics-grid">
         <section className="workspace-panel">
           <div className="workspace-panel-header">
             <div>
               <h2>Cost Summary</h2>
-              <p>Fleet service spending</p>
+              <p>Fleet service spending in the selected window</p>
             </div>
           </div>
           <div className="detail-list">
             <div>
               <dt>Tracked Service Cost</dt>
-              <dd>{formatCurrency(totalTrackedServiceCost)}</dd>
+              <dd>{formatCurrency(fleetExpensePoints.reduce((sum, point) => sum + (point.value ?? 0), 0))}</dd>
             </div>
             <div>
               <dt>Average Logged Service</dt>
@@ -1735,6 +2007,24 @@ function AnalyticsIndexView({
       <section className="workspace-panel">
         <div className="workspace-panel-header">
           <div>
+            <h2>Fleet Expense by Category</h2>
+            <p>Spend distribution across all vehicles</p>
+          </div>
+        </div>
+        {fleetCategoryExpenses.length === 0 ? (
+          <div className="empty-inline">No service costs match the selected window.</div>
+        ) : (
+          <div className="category-list">
+            {fleetCategoryExpenses.map((item) => (
+              <CategoryExpenseCard item={item} key={item.category} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
             <h2>Recent Activity</h2>
             <p>Latest service events across the fleet</p>
           </div>
@@ -1757,6 +2047,35 @@ function AnalyticsIndexView({
                 </span>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-header">
+          <div>
+            <h2>Fleet Mileage Timeline</h2>
+            <p>Latest odometer activity by vehicle</p>
+          </div>
+        </div>
+        {fleetInsightRecords.length === 0 ? (
+          <div className="empty-inline">No mileage activity yet</div>
+        ) : (
+          <div className="timeline-list">
+            {fleetInsightRecords.flatMap((car) =>
+              car.mileageHistory.slice(0, 3).map((entry) => (
+                <div className="timeline-card" key={`${car.carId}-${entry.entryId}`}>
+                  <div className="timeline-top">
+                    <div>
+                      <div className="timeline-date">{entry.date}</div>
+                      <div className="timeline-source">{car.carName} - {formatSourceLabel(entry.source)}</div>
+                    </div>
+                    <div className="timeline-mileage">{entry.mileage.toLocaleString("en-US")} mi</div>
+                  </div>
+                  <div className="timeline-notes">{entry.notes}</div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </section>
@@ -2017,28 +2336,17 @@ function VehicleWorkspaceView({
           </div>
           <form className="form-grid" onSubmit={handleUpdateMileage}>
             <input type="hidden" value={mileageForm.carId} />
-            <div className="field-row">
-              <div className="field-group">
-                <label htmlFor="mileageDate">Entry Date</label>
-                <input
-                  id="mileageDate"
-                  onChange={(event) => updateMileageField("date", event.target.value)}
-                  type="date"
-                  value={mileageForm.date}
-                />
-              </div>
-              <div className="field-group">
-                <label htmlFor="mileageValue">Mileage</label>
-                <input
-                  id="mileageValue"
-                  min={mileageForm.allowCorrection ? 0 : car.currentMileage}
-                  onChange={(event) => updateMileageField("mileage", event.target.value)}
-                  required
-                  type="number"
-                  value={mileageForm.mileage}
-                />
-                <div className="field-hint">Current mileage is the default minimum.</div>
-              </div>
+            <div className="field-group">
+              <label htmlFor="mileageValue">Mileage</label>
+              <input
+                id="mileageValue"
+                min={mileageForm.allowCorrection ? 0 : car.currentMileage}
+                onChange={(event) => updateMileageField("mileage", event.target.value)}
+                required
+                type="number"
+                value={mileageForm.mileage}
+              />
+              <div className="field-hint">Current mileage is the default minimum.</div>
             </div>
             <div className="field-group">
               <label htmlFor="mileageNotes">Notes</label>
@@ -2057,9 +2365,11 @@ function VehicleWorkspaceView({
               />
               <span>Allow a lower mileage if this is a correction.</span>
             </label>
-            <button className="btn btn-primary" type="submit">
-              Save Mileage Entry
-            </button>
+            <div className="action-row action-row-submit">
+              <button className="btn btn-primary" type="submit">
+                Save Mileage Entry
+              </button>
+            </div>
           </form>
         </section>
 
@@ -2113,24 +2423,18 @@ function VehicleWorkspaceView({
               </div>
               <div className="field-group">
                 <label htmlFor="serviceCost">Cost</label>
-                <input
-                  id="serviceCost"
-                  min="0"
-                  onChange={(event) => updateServiceField("cost", event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={serviceForm.cost}
-                />
+                <div className="currency-input">
+                  <span aria-hidden="true">$</span>
+                  <input
+                    id="serviceCost"
+                    inputMode="decimal"
+                    onChange={(event) => updateServiceField("cost", event.target.value)}
+                    pattern="[0-9]*[.]?[0-9]*"
+                    type="text"
+                    value={serviceForm.cost}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="field-group">
-              <label htmlFor="serviceDescription">Description</label>
-              <input
-                id="serviceDescription"
-                onChange={(event) => updateServiceField("description", event.target.value)}
-                type="text"
-                value={serviceForm.description}
-              />
             </div>
             <div className="field-group">
               <label htmlFor="serviceNotes">Notes</label>
@@ -2141,9 +2445,11 @@ function VehicleWorkspaceView({
                 value={serviceForm.notes}
               />
             </div>
-            <button className="btn btn-primary" type="submit">
-              Save Service Record
-            </button>
+            <div className="action-row action-row-submit">
+              <button className="btn btn-primary" type="submit">
+                Save Service Record
+              </button>
+            </div>
           </form>
         </section>
       </div>
@@ -2264,14 +2570,17 @@ function VehicleWorkspaceView({
                 </div>
                 <div className="field-group">
                   <label htmlFor="editServiceCost">Cost</label>
-                  <input
-                    id="editServiceCost"
-                    min="0"
-                    onChange={(event) => updateEditServiceField("cost", event.target.value)}
-                    step="0.01"
-                    type="number"
-                    value={editServiceForm.cost}
-                  />
+                  <div className="currency-input">
+                    <span aria-hidden="true">$</span>
+                    <input
+                      id="editServiceCost"
+                      inputMode="decimal"
+                      onChange={(event) => updateEditServiceField("cost", event.target.value)}
+                      pattern="[0-9]*[.]?[0-9]*"
+                      type="text"
+                      value={editServiceForm.cost}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="field-group">
@@ -2314,20 +2623,20 @@ function VehicleWorkspaceView({
           <table className="workspace-table">
             <thead>
               <tr>
-                <th>Date</th>
                 <th>Mileage</th>
                 <th>Source</th>
                 <th>Notes</th>
+                <th>Updated</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {car.mileageHistory.map((entry) => (
                 <tr key={entry.entryId}>
-                  <td>{entry.date}</td>
                   <td>{entry.mileage.toLocaleString("en-US")} mi</td>
                   <td>{formatSourceLabel(entry.source)}</td>
-                  <td>{entry.notes}</td>
+                  <td>{entry.notes || "N/A"}</td>
+                  <td>{entry.updated}</td>
                   <td className="table-actions">
                     {entry.canEdit ? (
                       <button className="btn btn-inline" onClick={() => startEditingMileageEntry(entry)} type="button">
@@ -2352,28 +2661,16 @@ function VehicleWorkspaceView({
 
           {editingMileageEntryId !== null ? (
             <form className="form-grid inline-edit-form" onSubmit={handleSaveMileageEntryEdit}>
-              <div className="field-row">
-                <div className="field-group">
-                  <label htmlFor="editMileageEntryDate">Entry Date</label>
-                  <input
-                    id="editMileageEntryDate"
-                    onChange={(event) => updateEditMileageEntryField("date", event.target.value)}
-                    required
-                    type="date"
-                    value={editMileageEntryForm.date}
-                  />
-                </div>
-                <div className="field-group">
-                  <label htmlFor="editMileageEntryValue">Mileage</label>
-                  <input
-                    id="editMileageEntryValue"
-                    min="0"
-                    onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
-                    required
-                    type="number"
-                    value={editMileageEntryForm.mileage}
-                  />
-                </div>
+              <div className="field-group">
+                <label htmlFor="editMileageEntryValue">Mileage</label>
+                <input
+                  id="editMileageEntryValue"
+                  min="0"
+                  onChange={(event) => updateEditMileageEntryField("mileage", event.target.value)}
+                  required
+                  type="number"
+                  value={editMileageEntryForm.mileage}
+                />
               </div>
               <div className="field-group">
                 <label htmlFor="editMileageEntryNotes">Notes</label>
@@ -2531,9 +2828,12 @@ function VehicleWorkspaceView({
 
 function VehicleInsightsView({
   car,
+  maxTrendDate,
+  minTrendDate,
   serviceTypeOptions,
   setTrendDateFrom,
   setTrendDateTo,
+  setTrendPreset,
   setTrendServiceTypeFilter,
   trendAverageMonthlyExpense,
   trendAverageMonthlyMileage,
@@ -2547,9 +2847,12 @@ function VehicleInsightsView({
   trendServiceTypeFilter
 }: {
   car: CarDetails | null;
+  maxTrendDate: string;
+  minTrendDate: string;
   serviceTypeOptions: string[];
   setTrendDateFrom: (value: string) => void;
   setTrendDateTo: (value: string) => void;
+  setTrendPreset: (preset: TrendPreset) => void;
   setTrendServiceTypeFilter: (value: string) => void;
   trendAverageMonthlyExpense: number | null;
   trendAverageMonthlyMileage: number | null;
@@ -2557,9 +2860,9 @@ function VehicleInsightsView({
   trendCategoryExpenses: CategoryExpenseItem[];
   trendDateFrom: string;
   trendDateTo: string;
-  trendExpensePoints: TrendPoint[];
+  trendExpensePoints: ChartPoint[];
   trendMilesDriven: number | null;
-  trendMileagePoints: TrendPoint[];
+  trendMileagePoints: ChartPoint[];
   trendServiceTypeFilter: string;
 }) {
   if (!car) {
@@ -2585,64 +2888,32 @@ function VehicleInsightsView({
         />
       </section>
 
-      <section className="workspace-panel">
-        <div className="workspace-panel-header">
-          <div>
-            <h2>Trend Filters</h2>
-            <p>Focus the reporting window.</p>
-          </div>
-        </div>
-        <div className="toolbar-grid">
-          <div className="field-group">
-            <label htmlFor="trendDateFrom">From Date</label>
-            <input
-              id="trendDateFrom"
-              onChange={(event) => setTrendDateFrom(event.target.value)}
-              type="date"
-              value={trendDateFrom}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="trendDateTo">To Date</label>
-            <input
-              id="trendDateTo"
-              onChange={(event) => setTrendDateTo(event.target.value)}
-              type="date"
-              value={trendDateTo}
-            />
-          </div>
-          <div className="field-group">
-            <label htmlFor="trendServiceType">Service Category</label>
-            <select
-              id="trendServiceType"
-              onChange={(event) => setTrendServiceTypeFilter(event.target.value)}
-              value={trendServiceTypeFilter}
-            >
-              <option value="all">All categories</option>
-              {serviceTypeOptions.map((serviceType) => (
-                <option key={serviceType} value={serviceType}>
-                  {serviceType}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </section>
+      <TrendFilterPanel
+        dateFrom={trendDateFrom}
+        dateTo={trendDateTo}
+        maxDate={maxTrendDate}
+        minDate={minTrendDate}
+        onPreset={setTrendPreset}
+        onServiceTypeChange={setTrendServiceTypeFilter}
+        onSetDateFrom={setTrendDateFrom}
+        onSetDateTo={setTrendDateTo}
+        serviceType={trendServiceTypeFilter}
+        serviceTypeOptions={serviceTypeOptions}
+        title="Vehicle Trend Window"
+      />
 
       <div className="trend-grid">
-        <TrendCard
+        <TimeSeriesChart
           emptyLabel="Mileage trends appear after multiple odometer entries."
           label="Mileage Trend"
           points={trendMileagePoints}
-          prefix=""
           suffix=" mi"
         />
-        <TrendCard
+        <TimeSeriesChart
           emptyLabel="Expense trends appear after priced service records."
           label="Expense Trend"
           points={trendExpensePoints}
           prefix="$"
-          suffix=""
         />
       </div>
 
@@ -3063,44 +3334,150 @@ function MileageEntryCard({
   */
 }
 
-function TrendCard({
+function TrendFilterPanel({
+  dateFrom,
+  dateTo,
+  maxDate,
+  minDate,
+  onPreset,
+  onServiceTypeChange,
+  onSetDateFrom,
+  onSetDateTo,
+  serviceType,
+  serviceTypeOptions,
+  title
+}: {
+  dateFrom: string;
+  dateTo: string;
+  maxDate: string;
+  minDate: string;
+  onPreset: (preset: TrendPreset) => void;
+  onServiceTypeChange: (value: string) => void;
+  onSetDateFrom: (value: string) => void;
+  onSetDateTo: (value: string) => void;
+  serviceType: string;
+  serviceTypeOptions: string[];
+  title: string;
+}) {
+  return (
+    <section className="workspace-panel">
+      <div className="workspace-panel-header">
+        <div>
+          <h2>{title}</h2>
+          <p>Focus the reporting window.</p>
+        </div>
+      </div>
+      <div className="trend-preset-row" aria-label="Trend window presets">
+        <button className="btn btn-inline" onClick={() => onPreset("month")} type="button">
+          Month
+        </button>
+        <button className="btn btn-inline" onClick={() => onPreset("quarter")} type="button">
+          Quarter
+        </button>
+        <button className="btn btn-inline" onClick={() => onPreset("year")} type="button">
+          Year
+        </button>
+        <button className="btn btn-inline" onClick={() => onPreset("ytd")} type="button">
+          YTD
+        </button>
+        <button className="btn btn-inline" onClick={() => onPreset("all")} type="button">
+          All Time
+        </button>
+      </div>
+      <div className="toolbar-grid">
+        <div className="field-group">
+          <label htmlFor={`${title}-trendDateFrom`}>From Date</label>
+          <input
+            id={`${title}-trendDateFrom`}
+            max={maxDate}
+            min={minDate}
+            onChange={(event) => onSetDateFrom(event.target.value)}
+            type="date"
+            value={dateFrom}
+          />
+        </div>
+        <div className="field-group">
+          <label htmlFor={`${title}-trendDateTo`}>To Date</label>
+          <input
+            id={`${title}-trendDateTo`}
+            max={maxDate}
+            min={minDate}
+            onChange={(event) => onSetDateTo(event.target.value)}
+            type="date"
+            value={dateTo}
+          />
+        </div>
+        <div className="field-group">
+          <label htmlFor={`${title}-trendServiceType`}>Service Category</label>
+          <select
+            id={`${title}-trendServiceType`}
+            onChange={(event) => onServiceTypeChange(event.target.value)}
+            value={serviceType}
+          >
+            <option value="all">All categories</option>
+            {serviceTypeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TimeSeriesChart({
   emptyLabel,
   label,
   points,
-  prefix,
-  suffix
+  prefix = "",
+  suffix = ""
 }: {
   emptyLabel: string;
   label: string;
-  points: TrendPoint[];
-  prefix: string;
-  suffix: string;
+  points: ChartPoint[];
+  prefix?: string;
+  suffix?: string;
 }) {
-  const maxValue = points.reduce((max, point) => Math.max(max, point.value), 0);
+  const chart = buildLineChart(points);
+  const latestPoint = points[points.length - 1] ?? null;
+  const hasPlottedData = chart.points.length > 0;
 
   return (
     <div className="trend-card">
-      <div className="trend-card-title">{label}</div>
+      <div className="trend-card-heading">
+        <div className="trend-card-title">{label}</div>
+        {latestPoint?.value !== null && latestPoint?.value !== undefined ? (
+          <div className="trend-card-latest">{formatTrendValue(latestPoint.value, prefix, suffix)}</div>
+        ) : null}
+      </div>
       {points.length === 0 ? (
         <div className="muted-text">{emptyLabel}</div>
       ) : (
-        <div className="trend-bars">
-          {points.map((point) => (
-            <div className="trend-bar-row" key={point.label}>
-              <div className="trend-label">{point.label}</div>
-              <div className="trend-bar-track">
-                <div
-                  className="trend-bar-fill"
-                  style={{ width: `${maxValue ? Math.max(10, (point.value / maxValue) * 100) : 0}%` }}
-                />
-              </div>
-              <div className="trend-value">
-                {prefix}
-                {Math.round(point.value).toLocaleString("en-US")}
-                {suffix}
-              </div>
-            </div>
-          ))}
+        <div className="line-chart">
+          <svg aria-label={label} preserveAspectRatio="none" role="img" viewBox="0 0 640 260">
+            <line className="line-chart-grid" x1="44" x2="610" y1="34" y2="34" />
+            <line className="line-chart-grid" x1="44" x2="610" y1="128" y2="128" />
+            <line className="line-chart-grid" x1="44" x2="610" y1="222" y2="222" />
+            <line className="line-chart-axis" x1="44" x2="44" y1="26" y2="222" />
+            <line className="line-chart-axis" x1="44" x2="610" y1="222" y2="222" />
+            {chart.areaPath ? <path className="line-chart-area" d={chart.areaPath} /> : null}
+            {chart.linePath ? <path className="line-chart-line" d={chart.linePath} /> : null}
+            {chart.points.map((point) => (
+              <circle className="line-chart-point" cx={point.x} cy={point.y} key={point.label} r="4" />
+            ))}
+          </svg>
+          {!hasPlottedData ? <div className="line-chart-empty">No records in this window</div> : null}
+          <div className="line-chart-scale">
+            <span>{formatTrendValue(chart.maxValue, prefix, suffix)}</span>
+            <span>{formatTrendValue(chart.minValue, prefix, suffix)}</span>
+          </div>
+          <div className="line-chart-labels">
+            <span>{points[0]?.label}</span>
+            <span>{points[Math.floor((points.length - 1) / 2)]?.label}</span>
+            <span>{points[points.length - 1]?.label}</span>
+          </div>
         </div>
       )}
     </div>
@@ -3117,6 +3494,136 @@ function CategoryExpenseCard({ item }: { item: CategoryExpenseItem }) {
       <div className="category-value">{formatCurrency(item.totalCost)}</div>
     </div>
   );
+}
+
+function buildFleetMileageTrend(records: TrendMileageRecord[]): TrendPoint[] {
+  const sorted = [...records].sort((left, right) => left.date.getTime() - right.date.getTime());
+  const latestByVehicle = new Map<number | string, number>();
+  const points = new Map<string, { label: string; value: number }>();
+
+  for (const record of sorted) {
+    const bucket = getMonthBucket(record.date);
+    latestByVehicle.set(record.carId ?? record.carName ?? bucket.sortKey, record.mileage);
+    points.set(bucket.sortKey, {
+      label: bucket.label,
+      value: [...latestByVehicle.values()].reduce((sum, mileage) => sum + mileage, 0)
+    });
+  }
+
+  return [...points.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, point]) => point);
+}
+
+function calculateFleetMilesDriven(records: TrendMileageRecord[]) {
+  const byVehicle = groupMileageByVehicle(records);
+  let total = 0;
+  let hasDrivenMiles = false;
+
+  for (const vehicleRecords of byVehicle.values()) {
+    const milesDriven = calculateMilesDriven(vehicleRecords);
+    if (milesDriven !== null) {
+      total += milesDriven;
+      hasDrivenMiles = true;
+    }
+  }
+
+  return hasDrivenMiles ? total : null;
+}
+
+function calculateFleetAverageMonthlyMileage(records: TrendMileageRecord[]) {
+  const byVehicle = groupMileageByVehicle(records);
+  let total = 0;
+  let hasAverage = false;
+
+  for (const vehicleRecords of byVehicle.values()) {
+    const average = calculateAverageMonthlyMileage(vehicleRecords);
+    if (average !== null) {
+      total += average;
+      hasAverage = true;
+    }
+  }
+
+  return hasAverage ? total : null;
+}
+
+function groupMileageByVehicle(records: TrendMileageRecord[]) {
+  const groups = new Map<number | string, TrendMileageRecord[]>();
+
+  for (const record of records) {
+    const key = record.carId ?? record.carName ?? "fleet";
+    groups.set(key, [...(groups.get(key) ?? []), record]);
+  }
+
+  return groups;
+}
+
+function toWindowedChartPoints(points: TrendPoint[], dateFrom: string, dateTo: string): ChartPoint[] {
+  if (!dateFrom && !dateTo) {
+    return points;
+  }
+
+  const pointMap = new Map(points.map((point) => [getMonthKeyFromLabel(point.label), point.value]));
+  const start = dateFrom ? parseIsoDateValue(dateFrom) : getFirstTrendMonth(points);
+  const end = dateTo ? parseIsoDateValue(dateTo) : getLastTrendMonth(points);
+
+  if (!start || !end || start.getTime() > end.getTime()) {
+    return points;
+  }
+
+  const windowedPoints: ChartPoint[] = [];
+  const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+  const endMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+
+  while (cursor.getTime() <= endMonth.getTime()) {
+    const sortKey = getMonthSortKey(cursor);
+    windowedPoints.push({
+      label: getMonthLabel(cursor),
+      value: pointMap.get(sortKey) ?? null
+    });
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return windowedPoints;
+}
+
+function buildLineChart(points: ChartPoint[]) {
+  const width = 640;
+  const height = 260;
+  const left = 44;
+  const right = 610;
+  const top = 26;
+  const bottom = 222;
+  const values = points.map((point) => point.value).filter((value): value is number => value !== null);
+  const minValue = values.length ? Math.min(...values) : 0;
+  const maxValue = values.length ? Math.max(...values) : 0;
+  const range = Math.max(1, maxValue - minValue);
+  const plottedPoints = points.map((point, index) => {
+    const x = points.length === 1 ? (left + right) / 2 : left + (index / (points.length - 1)) * (right - left);
+    const y = point.value === null ? null : bottom - ((point.value - minValue) / range) * (bottom - top);
+
+    return { ...point, x, y };
+  });
+  const visiblePoints = plottedPoints.filter((point): point is typeof point & { y: number } => point.y !== null);
+  const linePath =
+    visiblePoints.length === 1
+      ? `M ${Math.max(left, visiblePoints[0].x - 28)} ${visiblePoints[0].y} L ${Math.min(
+          right,
+          visiblePoints[0].x + 28
+        )} ${visiblePoints[0].y}`
+      : visiblePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const areaPath =
+    visiblePoints.length > 1
+      ? `${linePath} L ${visiblePoints[visiblePoints.length - 1].x} ${bottom} L ${visiblePoints[0].x} ${bottom} Z`
+      : "";
+
+  return {
+    areaPath,
+    linePath,
+    maxValue,
+    minValue,
+    points: visiblePoints,
+    width,
+    height
+  };
 }
 
 function OverviewCard({
@@ -3344,6 +3851,101 @@ function parseDisplayDate(value: string) {
 function parseIsoDateValue(value: string) {
   const [year, month, day] = value.split("-");
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+}
+
+function applyTrendPreset(
+  preset: TrendPreset,
+  setDateFrom: (value: string) => void,
+  setDateTo: (value: string) => void,
+  minDate: string,
+  maxDate: string
+) {
+  const today = new Date();
+  const dateTo = clampIsoDate(todayIso(), minDate, maxDate);
+  let dateFrom = minDate;
+
+  if (preset === "month") {
+    dateFrom = toIsoDate(addMonths(today, -1));
+  } else if (preset === "quarter") {
+    dateFrom = toIsoDate(addMonths(today, -3));
+  } else if (preset === "year") {
+    dateFrom = toIsoDate(addMonths(today, -12));
+  } else if (preset === "ytd") {
+    dateFrom = `${today.getFullYear()}-01-01`;
+  }
+
+  setDateFrom(clampIsoDate(dateFrom, minDate, maxDate));
+  setDateTo(dateTo);
+}
+
+function clampIsoDate(value: string, minDate: string, maxDate: string) {
+  if (!value) {
+    return "";
+  }
+
+  if (value < minDate) {
+    return minDate;
+  }
+
+  if (value > maxDate) {
+    return maxDate;
+  }
+
+  return value;
+}
+
+function getEarliestIsoDate(values: string[]) {
+  return values.filter(Boolean).sort()[0] ?? null;
+}
+
+function addYearsIso(value: string, years: number) {
+  const date = parseIsoDateValue(value);
+  date.setUTCFullYear(date.getUTCFullYear() + years);
+  return toIsoDate(date);
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth() + months, date.getDate()));
+}
+
+function toIsoDate(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    date.getUTCDate()
+  ).padStart(2, "0")}`;
+}
+
+function getMonthBucket(date: Date) {
+  return {
+    label: getMonthLabel(date),
+    sortKey: getMonthSortKey(date)
+  };
+}
+
+function getMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC", year: "numeric" }).format(date);
+}
+
+function getMonthSortKey(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function getMonthKeyFromLabel(label: string) {
+  const date = new Date(`${label} 1, 00:00:00 UTC`);
+  return Number.isNaN(date.getTime()) ? label : getMonthSortKey(date);
+}
+
+function getFirstTrendMonth(points: TrendPoint[]) {
+  const point = points[0];
+  return point ? new Date(`${point.label} 1, 00:00:00 UTC`) : null;
+}
+
+function getLastTrendMonth(points: TrendPoint[]) {
+  const point = points[points.length - 1];
+  return point ? new Date(`${point.label} 1, 00:00:00 UTC`) : null;
+}
+
+function formatTrendValue(value: number, prefix: string, suffix: string) {
+  return `${prefix}${Math.round(value).toLocaleString("en-US")}${suffix}`;
 }
 
 function formatSourceLabel(source: string) {

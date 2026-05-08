@@ -19,6 +19,7 @@ export type MileageHistoryItem = {
   mileage: number;
   source: string;
   notes: string;
+  updated: string;
 };
 
 export type TrendPoint = {
@@ -69,6 +70,7 @@ export type ServiceHistoryItem = {
 export type CarSummary = {
   carId: number;
   carName: string;
+  createdAt: string;
   currentMileage: number;
   lastServiceDate: string;
   lifetimeExpenses: number;
@@ -120,6 +122,15 @@ export type DashboardRecentService = {
   mileage: number;
   serviceId: number;
   serviceType: string;
+};
+
+export type FleetInsightRecord = {
+  carId: number;
+  carName: string;
+  createdAt: string;
+  currentMileage: number;
+  mileageHistory: MileageHistoryItem[];
+  serviceHistory: ServiceHistoryItem[];
 };
 
 export type AttentionItem = {

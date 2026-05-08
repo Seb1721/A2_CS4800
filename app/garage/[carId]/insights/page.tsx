@@ -7,6 +7,27 @@ import { loadWorkspaceData } from "@/lib/page-data";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ carId: string }>;
+}) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { title: "Vehicle Insights | CarKeeper" };
+  }
+
+  const { carId } = await params;
+
+  try {
+    const car = await getCarDetailsForUser(user.username, Number(carId));
+    return { title: `${car.carName} Insights | CarKeeper` };
+  } catch {
+    return { title: "Vehicle Insights | CarKeeper" };
+  }
+}
+
 export default async function VehicleInsightsPage({
   params
 }: {

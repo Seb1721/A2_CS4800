@@ -25,7 +25,6 @@ export async function POST(request: Request, context: RouteContext) {
     const car = await updateMileageForUser(user.username, {
       allowCorrection: Boolean(body?.allowCorrection),
       carId: Number(carId),
-      date: String(body?.date ?? ""),
       mileage: Number(body?.mileage),
       notes: String(body?.notes ?? "")
     });

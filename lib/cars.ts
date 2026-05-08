@@ -20,6 +20,7 @@ import type {
   CarSummary,
   DashboardOverview,
   DashboardRecentService,
+  FleetInsightRecord,
   MaintenanceAppointment,
   MileageHistoryItem,
   ServiceReminderRule,
@@ -99,14 +100,12 @@ type UpdateCarInput = {
 type UpdateMileageInput = {
   carId: number;
   mileage: number;
-  date: string;
   notes: string;
   allowCorrection: boolean;
 };
 
 type UpdateMileageEntryInput = {
   mileage: number;
-  date: string;
   notes: string;
   allowCorrection: boolean;
 };
@@ -291,7 +290,7 @@ export async function updateMileageForUser(
     throw new Error("Mileage cannot decrease unless you confirm it is a correction.");
   }
 
-  const entryDate = parseIsoDate(input.date);
+  const entryDate = new Date();
   const notes = input.notes.trim();
   const entryId = await nextSequence("mileageEntries");
   const mileageEntry: MileageEntry = {
@@ -299,7 +298,7 @@ export async function updateMileageForUser(
     date: entryDate,
     mileage: input.mileage,
     source: input.mileage < car.currentMileage ? "correction" : "manual",
-    notes: notes || "Mileage updated from dashboard."
+    notes: notes || "N/A"
   };
   const mileageHistory = [...getMileageHistory(car), mileageEntry];
   const updatedCar: CarDocument = {
@@ -352,8 +351,8 @@ export async function updateMileageEntryForUser(
     throw new Error("This mileage entry must be updated from its original workflow.");
   }
 
-  const entryDate = parseIsoDate(input.date);
-  const notes = input.notes.trim() || "Mileage updated from dashboard.";
+  const entryDate = new Date();
+  const notes = input.notes.trim() || "N/A";
   const previousMileage = existingEntry.mileage;
   const isCorrection = input.mileage < previousMileage;
 
@@ -450,7 +449,7 @@ export async function addServiceToCar(username: string, input: AddServiceInput):
   const serviceDate = parseMmDdYy(input.serviceDate);
   const serviceType = input.serviceType.trim();
   const description = input.description.trim();
-  const notes = input.notes.trim();
+  const notes = input.notes.trim() || "N/A";
   const cost = parseCost(input.cost);
 
   if (!serviceType) {
@@ -538,7 +537,7 @@ export async function updateServiceForCar(
   const serviceDate = parseMmDdYy(input.serviceDate);
   const serviceType = input.serviceType.trim();
   const description = input.description.trim();
-  const notes = input.notes.trim();
+  const notes = input.notes.trim() || "N/A";
   const cost = parseCost(input.cost);
 
   if (!serviceType) {
@@ -669,6 +668,25 @@ export async function listRecentServicesForUser(
     }));
 }
 
+export async function listFleetInsightRecords(username: string): Promise<FleetInsightRecord[]> {
+  const db = await getDatabase();
+  const cars = db.collection<CarDocument>("cars");
+  const records = await cars.find({ ownerUsername: username }).sort({ carId: 1 }).toArray();
+
+  return records.map((car) => {
+    const details = toCarDetails(car);
+
+    return {
+      carId: details.carId,
+      carName: details.carName,
+      createdAt: details.createdAt,
+      currentMileage: details.currentMileage,
+      mileageHistory: details.mileageHistory,
+      serviceHistory: details.serviceHistory
+    };
+  });
+}
+
 export async function listAttentionVehicles(username: string): Promise<AttentionItem[]> {
   const db = await getDatabase();
   const cars = db.collection<CarDocument>("cars");
@@ -755,6 +773,7 @@ function toCarSummary(car: CarDocument): CarSummary {
   return {
     carId: car.carId,
     carName: `${car.year} ${car.make} ${car.model}`,
+    createdAt: formatIsoDate(car.createdAt),
     currentMileage: car.currentMileage,
     lastServiceDate: formatMmDdYy(car.lastServiceDate),
     lifetimeExpenses: roundCurrency(car.lifetimeCost),
@@ -841,12 +860,13 @@ function toMileageHistoryItem(entry: MileageEntry): MileageHistoryItem {
     linkedServiceId: entry.serviceId,
     mileage: entry.mileage,
     notes: entry.notes,
-    source: entry.source
+    source: entry.source,
+    updated: formatMmDdYy(entry.date)
   };
 }
 
 function getMileageHistory(car: CarDocument) {
-  if (car.mileageHistory && car.mileageHistory.length > 0) {
+  if (car.mileageHistory) {
     return car.mileageHistory;
   }
 

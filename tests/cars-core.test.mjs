@@ -240,6 +240,39 @@ test("updateServiceForCar recalculates lifetime cost when a priced service becom
   );
 });
 
+test("deleteServiceForCar removes service-created mileage from current mileage", async () => {
+  const db = createMockDatabase();
+  harness.setMockDatabase(db);
+
+  const car = await harness.cars.createCar("driver", {
+    imageUrl: "",
+    make: "Honda",
+    mileage: 170000,
+    model: "Civic",
+    serviceReminderRules: [],
+    year: 2018
+  });
+
+  const withService = await harness.cars.addServiceToCar("driver", {
+    carId: car.carId,
+    cost: 60,
+    description: "",
+    mileage: 176000,
+    notes: "",
+    serviceDate: "05/07/26",
+    serviceType: "Oil Change"
+  });
+
+  assert.equal(withService.currentMileage, 176000);
+
+  const service = withService.serviceHistory[0];
+  const result = await harness.cars.deleteServiceForCar("driver", car.carId, service.serviceId);
+
+  assert.equal(result.currentMileage, 170000);
+  assert.equal(result.serviceHistory.length, 0);
+  assert.equal(result.mileageHistory.some((entry) => entry.linkedServiceId === service.serviceId), false);
+});
+
 test.todo("mileage corrections should persist after later service recalculation");
 
 function createMockDatabase(initialState = {}) {

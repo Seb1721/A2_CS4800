@@ -2,9 +2,13 @@ import { redirect } from "next/navigation";
 
 import { DashboardClient } from "@/components/dashboard-client";
 import { getCurrentUser } from "@/lib/auth";
+import { listFleetInsightRecords } from "@/lib/cars";
 import { loadWorkspaceData } from "@/lib/page-data";
 
 export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "Analytics | CarKeeper"
+};
 
 export default async function ServicesPage() {
   const user = await getCurrentUser();
@@ -17,10 +21,12 @@ export default async function ServicesPage() {
     user.username,
     250
   );
+  const fleetInsightRecords = await listFleetInsightRecords(user.username);
 
   return (
     <DashboardClient
       attentionItems={attentionItems}
+      fleetInsightRecords={fleetInsightRecords}
       initialCars={cars}
       overview={overview}
       profile={profile}
