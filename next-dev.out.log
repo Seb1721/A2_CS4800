@@ -1,0 +1,11 @@
+
+> carkeeper-next@1.0.0 dev
+> next dev
+
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3001
+   - Network:      http://172.24.208.1:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.2s

@@ -4391,18 +4391,18 @@ function applyTrendPreset(
   minDate: string,
   maxDate: string
 ) {
-  const today = new Date();
-  const dateTo = clampIsoDate(todayIso(), minDate, maxDate);
+  const today = parseIsoDateValue(todayIso());
+  const dateTo = clampIsoDate(toIsoDate(today), minDate, maxDate);
   let dateFrom = minDate;
 
   if (preset === "month") {
-    dateFrom = toIsoDate(addMonths(today, -1));
+    dateFrom = toIsoDate(getMonthStart(today));
   } else if (preset === "quarter") {
-    dateFrom = toIsoDate(addMonths(today, -3));
+    dateFrom = toIsoDate(getMonthStart(addMonths(today, -2)));
   } else if (preset === "year") {
-    dateFrom = toIsoDate(addMonths(today, -12));
+    dateFrom = toIsoDate(getMonthStart(addMonths(today, -11)));
   } else if (preset === "ytd") {
-    dateFrom = `${today.getFullYear()}-01-01`;
+    dateFrom = `${today.getUTCFullYear()}-01-01`;
   }
 
   setDateFrom(clampIsoDate(dateFrom, minDate, maxDate));
