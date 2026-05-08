@@ -1262,6 +1262,7 @@ textarea {
 }
 
 .line-chart {
+  padding: 4px 0 0;
   position: relative;
 }
 
@@ -1277,7 +1278,7 @@ textarea {
 
 .line-chart svg {
   display: block;
-  height: 260px;
+  height: 240px;
   overflow: visible;
   width: 100%;
 }
@@ -1293,22 +1294,19 @@ textarea {
   stroke-width: 1.4;
 }
 
-.line-chart-area {
-  fill: rgba(217, 154, 52, 0.16);
-}
-
 .line-chart-line {
   fill: none;
-  stroke: #203545;
+  filter: drop-shadow(0 3px 4px rgba(32, 53, 69, 0.18));
+  stroke: #1f5a85;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 4;
+  stroke-width: 5;
 }
 
 .line-chart-point {
-  fill: #d99a34;
+  fill: #f0a428;
   stroke: #fffaf3;
-  stroke-width: 2;
+  stroke-width: 3;
 }
 
 .line-chart-labels,
@@ -1321,12 +1319,13 @@ textarea {
 }
 
 .line-chart-scale {
-  margin-top: -250px;
+  inset: 12px 0 auto;
   pointer-events: none;
+  position: absolute;
 }
 
 .line-chart-labels {
-  margin-top: 230px;
+  margin-top: -2px;
 }
 
 .category-section {
@@ -1487,6 +1486,61 @@ textarea {
 .timeline-list {
   display: grid;
   gap: 12px;
+}
+
+.mileage-table-list {
+  border: 1px solid #d3c2ad;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.mileage-table-row {
+  align-items: center;
+  background: rgba(255, 250, 243, 0.86);
+  border-bottom: 1px solid #d8caba;
+  color: #20313f;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 88px minmax(150px, 1.3fr) minmax(92px, 0.7fr) minmax(130px, 0.8fr) minmax(160px, 1.2fr);
+  padding: 11px 14px;
+}
+
+.mileage-table-row:last-child {
+  border-bottom: 0;
+}
+
+.mileage-table-row span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mileage-table-row span:last-child {
+  color: #455867;
+  font-weight: 600;
+}
+
+.segmented-control {
+  background: #fffaf3;
+  border: 1px solid #c8b7a3;
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 3px;
+}
+
+.segmented-control button {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: #20313f;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 11px;
+}
+
+.segmented-control button.active {
+  background: #203545;
+  color: #fffaf3;
 }
 
 .timeline-card {

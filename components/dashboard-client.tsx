@@ -7,8 +7,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildExpenseByCategory,
-  buildExpenseTrend,
-  buildMileageTrend,
   calculateAverageMonthlyExpense,
   calculateAverageMonthlyMileage,
   calculateAverageMonthlyServiceFrequency,
@@ -1055,8 +1053,8 @@ export function DashboardClient({
     dateFrom: trendDateFromValue,
     dateTo: trendDateToValue
   });
-  const trendMileagePoints = buildMileageTrend(filteredTrendMileage);
-  const trendExpensePoints = buildExpenseTrend(filteredTrendServices);
+  const trendMileagePoints = buildMileageAdditionTrend(filteredTrendMileage);
+  const trendExpensePoints = buildCumulativeExpenseTrend(filteredTrendServices);
   const trendMileageChartPoints = toWindowedChartPoints(trendMileagePoints, trendDateFrom, trendDateTo);
   const trendExpenseChartPoints = toWindowedChartPoints(trendExpensePoints, trendDateFrom, trendDateTo);
   const trendCategoryExpenses = buildExpenseByCategory(filteredTrendServices);
@@ -1073,8 +1071,8 @@ export function DashboardClient({
     dateFrom: trendDateFromValue,
     dateTo: trendDateToValue
   });
-  const fleetMileagePoints = buildFleetMileageTrend(filteredFleetTrendMileage);
-  const fleetExpensePoints = buildExpenseTrend(filteredFleetTrendServices);
+  const fleetMileagePoints = buildFleetMileageAdditionTrend(filteredFleetTrendMileage);
+  const fleetExpensePoints = buildCumulativeExpenseTrend(filteredFleetTrendServices);
   const fleetMileageChartPoints = toWindowedChartPoints(fleetMileagePoints, trendDateFrom, trendDateTo);
   const fleetExpenseChartPoints = toWindowedChartPoints(fleetExpensePoints, trendDateFrom, trendDateTo);
   const fleetCategoryExpenses = buildExpenseByCategory(filteredFleetTrendServices);
@@ -1896,6 +1894,8 @@ function AnalyticsIndexView({
   const topCostVehicles = [...cars]
     .sort((left, right) => right.lifetimeExpenses - left.lifetimeExpenses)
     .slice(0, 5);
+  const [fleetTimelineSort, setFleetTimelineSort] = useState<"newest" | "oldest">("newest");
+  const fleetTimelineRows = getFleetMileageTimelineRows(fleetInsightRecords, fleetTimelineSort);
   const serviceCosts = recentServices.filter(
     (service): service is DashboardRecentService & { cost: number } => service.cost !== null
   );
@@ -1936,13 +1936,14 @@ function AnalyticsIndexView({
       <div className="trend-grid">
         <TimeSeriesChart
           emptyLabel="Fleet mileage trends appear after odometer entries are recorded."
-          label="Fleet Mileage Trend"
+          label="Fleet Miles Added"
           points={fleetMileagePoints}
           suffix=" mi"
+          yCeilingMultiplier={1.5}
         />
         <TimeSeriesChart
           emptyLabel="Fleet spending trends appear after priced service records are added."
-          label="Fleet Spending Trend"
+          label="Fleet Total Spending"
           points={fleetExpensePoints}
           prefix="$"
         />
@@ -1959,7 +1960,7 @@ function AnalyticsIndexView({
           <div className="detail-list">
             <div>
               <dt>Tracked Service Cost</dt>
-              <dd>{formatCurrency(fleetExpensePoints.reduce((sum, point) => sum + (point.value ?? 0), 0))}</dd>
+              <dd>{formatCurrency(getLatestChartValue(fleetExpensePoints))}</dd>
             </div>
             <div>
               <dt>Average Logged Service</dt>
@@ -2057,25 +2058,36 @@ function AnalyticsIndexView({
             <h2>Fleet Mileage Timeline</h2>
             <p>Latest odometer activity by vehicle</p>
           </div>
+          <div className="segmented-control" aria-label="Sort fleet mileage timeline">
+            <button
+              className={fleetTimelineSort === "newest" ? "active" : ""}
+              onClick={() => setFleetTimelineSort("newest")}
+              type="button"
+            >
+              Newest
+            </button>
+            <button
+              className={fleetTimelineSort === "oldest" ? "active" : ""}
+              onClick={() => setFleetTimelineSort("oldest")}
+              type="button"
+            >
+              Oldest
+            </button>
+          </div>
         </div>
         {fleetInsightRecords.length === 0 ? (
           <div className="empty-inline">No mileage activity yet</div>
         ) : (
-          <div className="timeline-list">
-            {fleetInsightRecords.flatMap((car) =>
-              car.mileageHistory.slice(0, 3).map((entry) => (
-                <div className="timeline-card" key={`${car.carId}-${entry.entryId}`}>
-                  <div className="timeline-top">
-                    <div>
-                      <div className="timeline-date">{entry.date}</div>
-                      <div className="timeline-source">{car.carName} - {formatSourceLabel(entry.source)}</div>
-                    </div>
-                    <div className="timeline-mileage">{entry.mileage.toLocaleString("en-US")} mi</div>
-                  </div>
-                  <div className="timeline-notes">{entry.notes}</div>
-                </div>
-              ))
-            )}
+          <div className="mileage-table-list">
+            {fleetTimelineRows.map((row) => (
+              <div className="mileage-table-row" key={`${row.carId}-${row.entryId}`}>
+                <span>{row.date}</span>
+                <span>{row.carName}</span>
+                <span>{row.mileage.toLocaleString("en-US")} mi</span>
+                <span>{formatSourceLabel(row.source)}</span>
+                <span>{row.notes}</span>
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -2905,13 +2917,14 @@ function VehicleInsightsView({
       <div className="trend-grid">
         <TimeSeriesChart
           emptyLabel="Mileage trends appear after multiple odometer entries."
-          label="Mileage Trend"
+          label="Miles Added"
           points={trendMileagePoints}
           suffix=" mi"
+          yCeilingMultiplier={1.5}
         />
         <TimeSeriesChart
           emptyLabel="Expense trends appear after priced service records."
-          label="Expense Trend"
+          label="Total Spending"
           points={trendExpensePoints}
           prefix="$"
         />
@@ -3432,16 +3445,18 @@ function TimeSeriesChart({
   label,
   points,
   prefix = "",
-  suffix = ""
+  suffix = "",
+  yCeilingMultiplier = 1.15
 }: {
   emptyLabel: string;
   label: string;
   points: ChartPoint[];
   prefix?: string;
   suffix?: string;
+  yCeilingMultiplier?: number;
 }) {
-  const chart = buildLineChart(points);
-  const latestPoint = points[points.length - 1] ?? null;
+  const chart = buildLineChart(points, yCeilingMultiplier);
+  const latestPoint = [...points].reverse().find((point) => point.value !== null) ?? null;
   const hasPlottedData = chart.points.length > 0;
 
   return (
@@ -3462,7 +3477,6 @@ function TimeSeriesChart({
             <line className="line-chart-grid" x1="44" x2="610" y1="222" y2="222" />
             <line className="line-chart-axis" x1="44" x2="44" y1="26" y2="222" />
             <line className="line-chart-axis" x1="44" x2="610" y1="222" y2="222" />
-            {chart.areaPath ? <path className="line-chart-area" d={chart.areaPath} /> : null}
             {chart.linePath ? <path className="line-chart-line" d={chart.linePath} /> : null}
             {chart.points.map((point) => (
               <circle className="line-chart-point" cx={point.x} cy={point.y} key={point.label} r="4" />
@@ -3496,21 +3510,70 @@ function CategoryExpenseCard({ item }: { item: CategoryExpenseItem }) {
   );
 }
 
-function buildFleetMileageTrend(records: TrendMileageRecord[]): TrendPoint[] {
+function buildMileageAdditionTrend(records: TrendMileageRecord[]): TrendPoint[] {
   const sorted = [...records].sort((left, right) => left.date.getTime() - right.date.getTime());
-  const latestByVehicle = new Map<number | string, number>();
   const points = new Map<string, { label: string; value: number }>();
+  const baseline = sorted[0]?.mileage ?? null;
 
   for (const record of sorted) {
+    if (baseline === null) {
+      continue;
+    }
+
     const bucket = getMonthBucket(record.date);
-    latestByVehicle.set(record.carId ?? record.carName ?? bucket.sortKey, record.mileage);
     points.set(bucket.sortKey, {
       label: bucket.label,
-      value: [...latestByVehicle.values()].reduce((sum, mileage) => sum + mileage, 0)
+      value: Math.max(points.get(bucket.sortKey)?.value ?? 0, record.mileage - baseline)
     });
   }
 
   return [...points.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, point]) => point);
+}
+
+function buildFleetMileageAdditionTrend(records: TrendMileageRecord[]): TrendPoint[] {
+  const byVehicle = groupMileageByVehicle(records);
+  const vehiclePoints = [...byVehicle.values()].map(buildMileageAdditionTrend);
+  const monthKeys = new Set(vehiclePoints.flatMap((points) => points.map((point) => getMonthKeyFromLabel(point.label))));
+
+  return [...monthKeys].sort().map((sortKey) => {
+    const date = monthKeyToDate(sortKey);
+    const value = vehiclePoints.reduce((sum, points) => {
+      const point = points.find((item) => getMonthKeyFromLabel(item.label) === sortKey);
+      return sum + (point?.value ?? 0);
+    }, 0);
+
+    return {
+      label: getMonthLabel(date),
+      value
+    };
+  });
+}
+
+function buildCumulativeExpenseTrend(records: TrendServiceRecord[]): TrendPoint[] {
+  const sorted = [...records]
+    .filter((record): record is TrendServiceRecord & { cost: number } => record.cost !== null)
+    .sort((left, right) => left.date.getTime() - right.date.getTime());
+  const monthlyTotals = new Map<string, { label: string; value: number }>();
+
+  for (const record of sorted) {
+    const bucket = getMonthBucket(record.date);
+    const current = monthlyTotals.get(bucket.sortKey);
+    monthlyTotals.set(bucket.sortKey, {
+      label: bucket.label,
+      value: (current?.value ?? 0) + record.cost
+    });
+  }
+
+  let runningTotal = 0;
+  return [...monthlyTotals.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, point]) => {
+      runningTotal += point.value;
+      return {
+        label: point.label,
+        value: roundDisplayNumber(runningTotal)
+      };
+    });
 }
 
 function calculateFleetMilesDriven(records: TrendMileageRecord[]) {
@@ -3585,16 +3648,16 @@ function toWindowedChartPoints(points: TrendPoint[], dateFrom: string, dateTo: s
   return windowedPoints;
 }
 
-function buildLineChart(points: ChartPoint[]) {
-  const width = 640;
-  const height = 260;
+function buildLineChart(points: ChartPoint[], yCeilingMultiplier: number) {
   const left = 44;
   const right = 610;
   const top = 26;
   const bottom = 222;
   const values = points.map((point) => point.value).filter((value): value is number => value !== null);
-  const minValue = values.length ? Math.min(...values) : 0;
-  const maxValue = values.length ? Math.max(...values) : 0;
+  const rawMinValue = values.length ? Math.min(...values) : 0;
+  const rawMaxValue = values.length ? Math.max(...values) : 0;
+  const minValue = 0;
+  const maxValue = Math.max(1, rawMaxValue * yCeilingMultiplier);
   const range = Math.max(1, maxValue - minValue);
   const plottedPoints = points.map((point, index) => {
     const x = points.length === 1 ? (left + right) / 2 : left + (index / (points.length - 1)) * (right - left);
@@ -3609,20 +3672,27 @@ function buildLineChart(points: ChartPoint[]) {
           right,
           visiblePoints[0].x + 28
         )} ${visiblePoints[0].y}`
-      : visiblePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPath =
-    visiblePoints.length > 1
-      ? `${linePath} L ${visiblePoints[visiblePoints.length - 1].x} ${bottom} L ${visiblePoints[0].x} ${bottom} Z`
-      : "";
+      : plottedPoints
+          .map((point) => (point.y === null ? null : `${point.x} ${point.y}`))
+          .reduce<{ commands: string[]; isNewSegment: boolean }>(
+            (state, coords) => {
+              if (coords === null) {
+                return { ...state, isNewSegment: true };
+              }
+
+              return {
+                commands: [...state.commands, `${state.isNewSegment ? "M" : "L"} ${coords}`],
+                isNewSegment: false
+              };
+            },
+            { commands: [], isNewSegment: true }
+          ).commands.join(" ");
 
   return {
-    areaPath,
     linePath,
     maxValue,
     minValue,
-    points: visiblePoints,
-    width,
-    height
+    points: visiblePoints
   };
 }
 
@@ -3825,6 +3895,30 @@ function groupAttentionItems(items: AttentionItem[]) {
   return [...groups.values()];
 }
 
+function getFleetMileageTimelineRows(records: FleetInsightRecord[], sortDirection: "newest" | "oldest") {
+  return records
+    .flatMap((car) =>
+      car.mileageHistory.map((entry) => ({
+        carId: car.carId,
+        carName: car.carName,
+        date: entry.date,
+        entryId: entry.entryId,
+        mileage: entry.mileage,
+        notes: entry.notes,
+        source: entry.source
+      }))
+    )
+    .sort((left, right) => {
+      const order = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
+      return sortDirection === "oldest" ? order : -order;
+    })
+    .slice(0, 20);
+}
+
+function getLatestChartValue(points: ChartPoint[]) {
+  return [...points].reverse().find((point) => point.value !== null)?.value ?? null;
+}
+
 function formatDateForServiceApi(value: string) {
   const [year, month, day] = value.split("-");
   if (!year || !month || !day) {
@@ -3929,6 +4023,11 @@ function getMonthSortKey(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function monthKeyToDate(sortKey: string) {
+  const [year, month] = sortKey.split("-");
+  return new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+}
+
 function getMonthKeyFromLabel(label: string) {
   const date = new Date(`${label} 1, 00:00:00 UTC`);
   return Number.isNaN(date.getTime()) ? label : getMonthSortKey(date);
@@ -3946,6 +4045,10 @@ function getLastTrendMonth(points: TrendPoint[]) {
 
 function formatTrendValue(value: number, prefix: string, suffix: string) {
   return `${prefix}${Math.round(value).toLocaleString("en-US")}${suffix}`;
+}
+
+function roundDisplayNumber(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function formatSourceLabel(source: string) {
