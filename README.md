@@ -64,9 +64,9 @@ Vehicle data is scoped by `ownerUsername`, so each account only sees its own rec
 
 ## Analytics
 
-Vehicle insights and fleet analytics are calculated from current service and mileage records. Historical service entries are supported, and graphs recalculate from the latest saved records. Graphs show cumulative miles added and total spending over the selected window, with manual window changes applied through the `Apply Window` action and presets applied immediately.
+Vehicle insights and fleet analytics are calculated from current service and mileage records. Historical service entries are supported, and graphs recalculate from the latest saved records. Graphs show cumulative miles added and total spending over the selected window, with manual window changes applied through the `Apply Window` action and presets applied immediately. Preset windows apply immediately and may extend up to one year ahead while leaving future months empty.
 
-Service history defaults to newest-first and can be toggled to oldest-first when reviewing vehicle records.
+Service history, mileage logs, and timeline lists default to newest-first, can be toggled to oldest-first, and support paged views of 5, 10, or 15 rows. Service notes appear in service history and can be expanded from the Notes header. Mileage notes appear in mileage logs and timelines. Reminder intervals use the latest service date for each service category as their baseline.
 
 ## Deployment
 

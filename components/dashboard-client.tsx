@@ -8,10 +8,7 @@ import { trackEvent } from "@/lib/analytics";
 import {
   buildExpenseByCategory,
   calculateAverageMonthlyExpense,
-  calculateAverageMonthlyMileage,
   calculateAverageMonthlyServiceFrequency,
-  calculateMilesDriven,
-  filterMileageHistoryByTrend,
   filterServiceHistoryByTrend,
   getFleetHighlights
 } from "@/lib/car-insights";
@@ -167,6 +164,11 @@ type ChartPoint = {
   label: string;
   value: number | null;
 };
+
+type SortDirection = "newest" | "oldest";
+type PageSizeOption = 5 | 10 | 15;
+
+const pageSizeOptions: PageSizeOption[] = [5, 10, 15];
 
 export function DashboardClient({
   attentionItems: initialAttentionItems,
@@ -1051,17 +1053,17 @@ export function DashboardClient({
     dateTo: trendDateToValue,
     serviceType: trendServiceTypeFilter === "all" ? null : trendServiceTypeFilter
   });
-  const filteredTrendMileage = filterMileageHistoryByTrend(trendMileageHistory, {
-    dateFrom: trendDateFromValue,
-    dateTo: trendDateToValue
-  });
-  const trendMileagePoints = buildMileageAdditionTrend(filteredTrendMileage);
+  const trendMileagePoints = buildMileageAdditionTrend(trendMileageHistory, trendDateFromValue, trendDateToValue);
   const trendExpensePoints = buildCumulativeExpenseTrend(filteredTrendServices);
   const trendMileageChartPoints = toWindowedChartPoints(trendMileagePoints, trendDateFrom, trendDateTo);
   const trendExpenseChartPoints = toWindowedChartPoints(trendExpensePoints, trendDateFrom, trendDateTo);
   const trendCategoryExpenses = buildExpenseByCategory(filteredTrendServices);
-  const trendMilesDriven = calculateMilesDriven(filteredTrendMileage);
-  const trendAverageMonthlyMileage = calculateAverageMonthlyMileage(filteredTrendMileage);
+  const trendMilesDriven = calculateMileageAddedInWindow(trendMileageHistory, trendDateFromValue, trendDateToValue);
+  const trendAverageMonthlyMileage = calculateAverageMonthlyMileageInWindow(
+    trendMileageHistory,
+    trendDateFromValue,
+    trendDateToValue
+  );
   const trendAverageMonthlyExpense = calculateAverageMonthlyExpense(filteredTrendServices);
   const trendAverageMonthlyServiceFrequency = calculateAverageMonthlyServiceFrequency(filteredTrendServices);
   const filteredFleetTrendServices = filterServiceHistoryByTrend(fleetTrendServices, {
@@ -1069,17 +1071,17 @@ export function DashboardClient({
     dateTo: trendDateToValue,
     serviceType: trendServiceTypeFilter === "all" ? null : trendServiceTypeFilter
   });
-  const filteredFleetTrendMileage = filterMileageHistoryByTrend(fleetTrendMileage, {
-    dateFrom: trendDateFromValue,
-    dateTo: trendDateToValue
-  });
-  const fleetMileagePoints = buildFleetMileageAdditionTrend(filteredFleetTrendMileage);
+  const fleetMileagePoints = buildFleetMileageAdditionTrend(fleetTrendMileage, trendDateFromValue, trendDateToValue);
   const fleetExpensePoints = buildCumulativeExpenseTrend(filteredFleetTrendServices);
   const fleetMileageChartPoints = toWindowedChartPoints(fleetMileagePoints, trendDateFrom, trendDateTo);
   const fleetExpenseChartPoints = toWindowedChartPoints(fleetExpensePoints, trendDateFrom, trendDateTo);
   const fleetCategoryExpenses = buildExpenseByCategory(filteredFleetTrendServices);
-  const fleetMilesDriven = calculateFleetMilesDriven(filteredFleetTrendMileage);
-  const fleetAverageMonthlyMileage = calculateFleetAverageMonthlyMileage(filteredFleetTrendMileage);
+  const fleetMilesDriven = calculateFleetMilesDriven(fleetTrendMileage, trendDateFromValue, trendDateToValue);
+  const fleetAverageMonthlyMileage = calculateFleetAverageMonthlyMileage(
+    fleetTrendMileage,
+    trendDateFromValue,
+    trendDateToValue
+  );
   const fleetAverageMonthlyExpense = calculateAverageMonthlyExpense(filteredFleetTrendServices);
   const fleetAverageMonthlyServiceFrequency = calculateAverageMonthlyServiceFrequency(filteredFleetTrendServices);
   const fleetHighlights = getFleetHighlights(cars);
@@ -1088,8 +1090,8 @@ export function DashboardClient({
   const serviceFeedRows = serviceFeed ?? recentServices;
   const today = todayIso();
   const maxTrendDate = addYearsIso(today, 1);
-  const vehicleTrendMinDate = selectedCar?.createdAt ?? today;
-  const fleetTrendMinDate = getEarliestIsoDate(fleetInsightRecords.map((car) => car.createdAt)) ?? today;
+  const vehicleTrendMinDate = selectedCar ? getVehicleTrendMinDate(selectedCar) : today;
+  const fleetTrendMinDate = getFleetTrendMinDate(fleetInsightRecords) ?? today;
   const pageMeta = getPageMeta(view, selectedCar);
   const showWorkspaceUser = view === "dashboard" || view === "account";
 
@@ -1897,7 +1899,21 @@ function AnalyticsIndexView({
     .sort((left, right) => right.lifetimeExpenses - left.lifetimeExpenses)
     .slice(0, 5);
   const [fleetTimelineSort, setFleetTimelineSort] = useState<"newest" | "oldest">("newest");
+  const [fleetTimelinePage, setFleetTimelinePage] = useState(0);
+  const [fleetTimelinePageSize, setFleetTimelinePageSize] = useState<PageSizeOption>(5);
+  const [recentActivityPage, setRecentActivityPage] = useState(0);
+  const [recentActivityPageSize, setRecentActivityPageSize] = useState<PageSizeOption>(5);
+  const [recentActivitySort, setRecentActivitySort] = useState<SortDirection>("newest");
   const fleetTimelineRows = getFleetMileageTimelineRows(fleetInsightRecords, fleetTimelineSort);
+  const pagedFleetTimeline = getPagedItems(fleetTimelineRows, fleetTimelinePage, fleetTimelinePageSize);
+  const sortedRecentServices = [...recentServices].sort((left, right) => {
+    const dateOrder = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
+    const idOrder = left.serviceId - right.serviceId;
+    const order = dateOrder || idOrder;
+
+    return recentActivitySort === "oldest" ? order : -order;
+  });
+  const pagedRecentServices = getPagedItems(sortedRecentServices, recentActivityPage, recentActivityPageSize);
   const serviceCosts = recentServices.filter(
     (service): service is DashboardRecentService & { cost: number } => service.cost !== null
   );
@@ -1909,10 +1925,14 @@ function AnalyticsIndexView({
   return (
     <div className="content-stack">
       <section className="overview-grid compact-shell">
-        <OverviewCard label="Fleet Miles In Scope" value={fleetMilesDriven === null ? "N/A" : `${fleetMilesDriven.toLocaleString("en-US")} mi`} />
+        <OverviewCard
+          helperText="Mileage added by odometer and service records in the selected window."
+          label="Fleet Miles Added"
+          value={fleetMilesDriven === null ? "N/A" : `${formatNumber(fleetMilesDriven)} mi`}
+        />
         <OverviewCard
           label="Avg Monthly Miles"
-          value={fleetAverageMonthlyMileage === null ? "N/A" : `${fleetAverageMonthlyMileage.toLocaleString("en-US")} mi`}
+          value={fleetAverageMonthlyMileage === null ? "N/A" : `${formatNumber(fleetAverageMonthlyMileage)} mi`}
         />
         <OverviewCard label="Avg Monthly Expense" value={formatCurrency(fleetAverageMonthlyExpense)} />
         <OverviewCard
@@ -2038,12 +2058,24 @@ function AnalyticsIndexView({
             <h2>Recent Activity</h2>
             <p>Latest service events across the fleet</p>
           </div>
+          <div className="history-toolbar">
+            <button
+              className="btn btn-inline"
+              onClick={() => {
+                setRecentActivitySort((current) => (current === "newest" ? "oldest" : "newest"));
+                setRecentActivityPage(0);
+              }}
+              type="button"
+            >
+              {recentActivitySort === "newest" ? "Newest First" : "Oldest First"}
+            </button>
+          </div>
         </div>
         {recentServices.length === 0 ? (
           <div className="empty-inline">No service records yet</div>
         ) : (
-          <div className="preview-list">
-            {recentServices.slice(0, 10).map((service) => (
+          <div className={`preview-list list-density-${recentActivityPageSize}`}>
+            {pagedRecentServices.items.map((service) => (
               <div className="preview-row analytics-preview-row" key={`${service.carId}-${service.serviceId}`}>
                 <span className="preview-row-stack">
                   <span className="preview-main">{service.serviceType}</span>
@@ -2059,6 +2091,13 @@ function AnalyticsIndexView({
             ))}
           </div>
         )}
+        <ListPager
+          page={pagedRecentServices.page}
+          pageCount={pagedRecentServices.pageCount}
+          pageSize={recentActivityPageSize}
+          setPage={setRecentActivityPage}
+          setPageSize={setRecentActivityPageSize}
+        />
       </section>
 
       <section className="workspace-panel">
@@ -2070,14 +2109,20 @@ function AnalyticsIndexView({
           <div className="segmented-control" aria-label="Sort fleet mileage timeline">
             <button
               className={fleetTimelineSort === "newest" ? "active" : ""}
-              onClick={() => setFleetTimelineSort("newest")}
+              onClick={() => {
+                setFleetTimelineSort("newest");
+                setFleetTimelinePage(0);
+              }}
               type="button"
             >
               Newest
             </button>
             <button
               className={fleetTimelineSort === "oldest" ? "active" : ""}
-              onClick={() => setFleetTimelineSort("oldest")}
+              onClick={() => {
+                setFleetTimelineSort("oldest");
+                setFleetTimelinePage(0);
+              }}
               type="button"
             >
               Oldest
@@ -2087,18 +2132,25 @@ function AnalyticsIndexView({
         {fleetInsightRecords.length === 0 ? (
           <div className="empty-inline">No mileage activity yet</div>
         ) : (
-          <div className="mileage-table-list">
-            {fleetTimelineRows.map((row) => (
+          <div className={`mileage-table-list list-density-${fleetTimelinePageSize}`}>
+            {pagedFleetTimeline.items.map((row) => (
               <div className="mileage-table-row" key={`${row.carId}-${row.entryId}`}>
                 <span>{row.date}</span>
                 <span>{row.carName}</span>
                 <span>{row.mileage.toLocaleString("en-US")} mi</span>
                 <span>{formatSourceLabel(row.source)}</span>
-                <span>{row.notes}</span>
+                <span className="truncate-text">{row.notes || "N/A"}</span>
               </div>
             ))}
           </div>
         )}
+        <ListPager
+          page={pagedFleetTimeline.page}
+          pageCount={pagedFleetTimeline.pageCount}
+          pageSize={fleetTimelinePageSize}
+          setPage={setFleetTimelinePage}
+          setPageSize={setFleetTimelinePageSize}
+        />
       </section>
     </div>
   );
@@ -2290,12 +2342,23 @@ function VehicleWorkspaceView({
 }) {
   const [showVehicleSettings, setShowVehicleSettings] = useState(false);
   const [serviceHistoryPage, setServiceHistoryPage] = useState(0);
-  const [serviceHistorySort, setServiceHistorySort] = useState<"newest" | "oldest">("newest");
+  const [serviceHistoryPageSize, setServiceHistoryPageSize] = useState<PageSizeOption>(5);
+  const [serviceHistorySort, setServiceHistorySort] = useState<SortDirection>("newest");
+  const [mileageLogPage, setMileageLogPage] = useState(0);
+  const [mileageLogPageSize, setMileageLogPageSize] = useState<PageSizeOption>(5);
+  const [mileageLogSort, setMileageLogSort] = useState<SortDirection>("newest");
+  const [showServiceNotes, setShowServiceNotes] = useState(false);
+  const [serviceNotesPage, setServiceNotesPage] = useState(0);
+  const [serviceNotesPageSize, setServiceNotesPageSize] = useState<PageSizeOption>(5);
 
   useEffect(() => {
     setShowVehicleSettings(false);
     setServiceHistoryPage(0);
     setServiceHistorySort("newest");
+    setMileageLogPage(0);
+    setMileageLogSort("newest");
+    setShowServiceNotes(false);
+    setServiceNotesPage(0);
   }, [car?.carId]);
 
   if (!car) {
@@ -2313,13 +2376,21 @@ function VehicleWorkspaceView({
 
     return serviceHistorySort === "oldest" ? order : -order;
   });
-  const serviceHistoryPageSize = 8;
-  const serviceHistoryPageCount = Math.max(1, Math.ceil(sortedServiceHistory.length / serviceHistoryPageSize));
-  const activeServiceHistoryPage = Math.min(serviceHistoryPage, serviceHistoryPageCount - 1);
-  const visibleServiceHistory = sortedServiceHistory.slice(
-    activeServiceHistoryPage * serviceHistoryPageSize,
-    activeServiceHistoryPage * serviceHistoryPageSize + serviceHistoryPageSize
-  );
+  const visibleServiceHistory = getPagedItems(sortedServiceHistory, serviceHistoryPage, serviceHistoryPageSize);
+  const sortedMileageLog = [...car.mileageHistory].sort((left, right) => {
+    const dateOrder = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
+    const idOrder = left.entryId - right.entryId;
+    const order = dateOrder || idOrder;
+
+    return mileageLogSort === "oldest" ? order : -order;
+  });
+  const visibleMileageLog = getPagedItems(sortedMileageLog, mileageLogPage, mileageLogPageSize);
+  const serviceNotesList = sortedServiceHistory.map((service) => ({
+    id: service.serviceId,
+    label: `${service.date} - ${service.serviceType}`,
+    text: service.notes || "N/A"
+  }));
+  const visibleServiceNotes = getPagedItems(serviceNotesList, serviceNotesPage, serviceNotesPageSize);
 
   return (
     <div className="content-stack">
@@ -2507,55 +2578,37 @@ function VehicleWorkspaceView({
               >
                 {serviceHistorySort === "newest" ? "Newest First" : "Oldest First"}
               </button>
-              {sortedServiceHistory.length > serviceHistoryPageSize ? (
-                <div className="section-pager">
-                  <button
-                    className="btn btn-inline"
-                    disabled={activeServiceHistoryPage === 0}
-                    onClick={() => setServiceHistoryPage((current) => Math.max(0, current - 1))}
-                    type="button"
-                  >
-                    Prev
-                  </button>
-                  <span className="section-pager-label">
-                    {activeServiceHistoryPage + 1} / {serviceHistoryPageCount}
-                  </span>
-                  <button
-                    className="btn btn-inline"
-                    disabled={activeServiceHistoryPage >= serviceHistoryPageCount - 1}
-                    onClick={() =>
-                      setServiceHistoryPage((current) => Math.min(serviceHistoryPageCount - 1, current + 1))
-                    }
-                    type="button"
-                  >
-                    Next
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>
           {car.serviceHistory.length === 0 ? (
             <div className="empty-inline">No service records yet</div>
           ) : (
-            <table className="workspace-table">
+            <table className={`workspace-table list-density-${serviceHistoryPageSize}`}>
               <thead>
                 <tr>
                   <th>Date</th>
                   <th>Category</th>
                   <th>Mileage</th>
                   <th>Cost</th>
-                  <th>Description</th>
+                  <th>
+                    <span className="table-heading-action">
+                      Notes
+                      <button className="btn btn-inline" onClick={() => setShowServiceNotes(true)} type="button">
+                        View All
+                      </button>
+                    </span>
+                  </th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {visibleServiceHistory.map((service) => (
+                {visibleServiceHistory.items.map((service) => (
                   <tr key={service.serviceId}>
                     <td>{service.date}</td>
                     <td>{service.serviceType}</td>
                     <td>{service.mileage.toLocaleString("en-US")} mi</td>
                     <td>{formatCurrency(service.cost)}</td>
-                    <td>{service.description || "N/A"}</td>
+                    <td className="truncate-cell">{service.notes || "N/A"}</td>
                     <td className="table-actions">
                       <button className="btn btn-inline" onClick={() => startEditingService(service)} type="button">
                         Edit
@@ -2574,6 +2627,44 @@ function VehicleWorkspaceView({
               </tbody>
             </table>
           )}
+          <ListPager
+            page={visibleServiceHistory.page}
+            pageCount={visibleServiceHistory.pageCount}
+            pageSize={serviceHistoryPageSize}
+            setPage={setServiceHistoryPage}
+            setPageSize={setServiceHistoryPageSize}
+          />
+
+          {showServiceNotes ? (
+            <div className="notes-popover" role="dialog" aria-modal="true" aria-label="Service notes">
+              <div className="notes-popover-panel">
+                <div className="workspace-panel-header">
+                  <div>
+                    <h2>Service Notes</h2>
+                    <p>Full note text for service records</p>
+                  </div>
+                  <button className="btn btn-secondary" onClick={() => setShowServiceNotes(false)} type="button">
+                    Close
+                  </button>
+                </div>
+                <div className={`notes-popup-list list-density-${serviceNotesPageSize}`}>
+                  {visibleServiceNotes.items.map((item) => (
+                    <div className="notes-popup-row" key={item.id}>
+                      <strong>{item.label}</strong>
+                      <span>{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <ListPager
+                  page={visibleServiceNotes.page}
+                  pageCount={visibleServiceNotes.pageCount}
+                  pageSize={serviceNotesPageSize}
+                  setPage={setServiceNotesPage}
+                  setPageSize={setServiceNotesPageSize}
+                />
+              </div>
+            </div>
+          ) : null}
 
           {editingServiceId !== null ? (
             <form className="form-grid inline-edit-form" onSubmit={handleSaveServiceEdit}>
@@ -2666,8 +2757,20 @@ function VehicleWorkspaceView({
               <h2>Mileage Log</h2>
               <p>Odometer history</p>
             </div>
+            <div className="history-toolbar">
+              <button
+                className="btn btn-inline"
+                onClick={() => {
+                  setMileageLogSort((current) => (current === "newest" ? "oldest" : "newest"));
+                  setMileageLogPage(0);
+                }}
+                type="button"
+              >
+                {mileageLogSort === "newest" ? "Newest First" : "Oldest First"}
+              </button>
+            </div>
           </div>
-          <table className="workspace-table">
+          <table className={`workspace-table list-density-${mileageLogPageSize}`}>
             <thead>
               <tr>
                 <th>Mileage</th>
@@ -2678,11 +2781,11 @@ function VehicleWorkspaceView({
               </tr>
             </thead>
             <tbody>
-              {car.mileageHistory.map((entry) => (
+              {visibleMileageLog.items.map((entry) => (
                 <tr key={entry.entryId}>
                   <td>{entry.mileage.toLocaleString("en-US")} mi</td>
                   <td>{formatSourceLabel(entry.source)}</td>
-                  <td>{entry.notes || "N/A"}</td>
+                  <td className="truncate-cell">{entry.notes || "N/A"}</td>
                   <td>{entry.updated}</td>
                   <td className="table-actions">
                     {entry.canEdit ? (
@@ -2705,6 +2808,13 @@ function VehicleWorkspaceView({
               ))}
             </tbody>
           </table>
+          <ListPager
+            page={visibleMileageLog.page}
+            pageCount={visibleMileageLog.pageCount}
+            pageSize={mileageLogPageSize}
+            setPage={setMileageLogPage}
+            setPageSize={setMileageLogPageSize}
+          />
 
           {editingMileageEntryId !== null ? (
             <form className="form-grid inline-edit-form" onSubmit={handleSaveMileageEntryEdit}>
@@ -2912,6 +3022,10 @@ function VehicleInsightsView({
   trendMileagePoints: ChartPoint[];
   trendServiceTypeFilter: string;
 }) {
+  const [timelineSort, setTimelineSort] = useState<SortDirection>("newest");
+  const [timelinePage, setTimelinePage] = useState(0);
+  const [timelinePageSize, setTimelinePageSize] = useState<PageSizeOption>(5);
+
   if (!car) {
     return (
       <section className="workspace-panel">
@@ -2920,13 +3034,26 @@ function VehicleInsightsView({
     );
   }
 
+  const sortedTimeline = [...car.mileageHistory].sort((left, right) => {
+    const dateOrder = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
+    const idOrder = left.entryId - right.entryId;
+    const order = dateOrder || idOrder;
+
+    return timelineSort === "oldest" ? order : -order;
+  });
+  const visibleTimeline = getPagedItems(sortedTimeline, timelinePage, timelinePageSize);
+
   return (
     <div className="content-stack">
       <section className="overview-grid compact-shell">
-        <OverviewCard label="Miles In Scope" value={trendMilesDriven === null ? "N/A" : `${trendMilesDriven.toLocaleString("en-US")} mi`} />
+        <OverviewCard
+          helperText="Mileage added by odometer and service records in the selected window."
+          label="Miles Added"
+          value={trendMilesDriven === null ? "N/A" : `${formatNumber(trendMilesDriven)} mi`}
+        />
         <OverviewCard
           label="Avg Monthly Miles"
-          value={trendAverageMonthlyMileage === null ? "N/A" : `${trendAverageMonthlyMileage.toLocaleString("en-US")} mi`}
+          value={trendAverageMonthlyMileage === null ? "N/A" : `${formatNumber(trendAverageMonthlyMileage)} mi`}
         />
         <OverviewCard label="Avg Monthly Expense" value={formatCurrency(trendAverageMonthlyExpense)} />
         <OverviewCard
@@ -2996,19 +3123,38 @@ function VehicleInsightsView({
             <h2>Mileage Timeline</h2>
             <p>Chronological odometer activity</p>
           </div>
+          <div className="history-toolbar">
+            <button
+              className="btn btn-inline"
+              onClick={() => {
+                setTimelineSort((current) => (current === "newest" ? "oldest" : "newest"));
+                setTimelinePage(0);
+              }}
+              type="button"
+            >
+              {timelineSort === "newest" ? "Newest First" : "Oldest First"}
+            </button>
+          </div>
         </div>
-        <div className="timeline-list">
-          {car.mileageHistory.map((entry) => (
+        <div className={`timeline-list list-density-${timelinePageSize}`}>
+          {visibleTimeline.items.map((entry) => (
             <div className="timeline-card" key={entry.entryId}>
               <div className="timeline-top">
                 <div className="timeline-date">{entry.date}</div>
                 <div className="timeline-mileage">{entry.mileage.toLocaleString("en-US")} mi</div>
               </div>
               <div className="timeline-source">{formatSourceLabel(entry.source)}</div>
-              <div className="timeline-notes">{entry.notes}</div>
+              <div className="timeline-notes truncate-text">{entry.notes || "N/A"}</div>
             </div>
           ))}
         </div>
+        <ListPager
+          page={visibleTimeline.page}
+          pageCount={visibleTimeline.pageCount}
+          pageSize={timelinePageSize}
+          setPage={setTimelinePage}
+          setPageSize={setTimelinePageSize}
+        />
       </section>
     </div>
   );
@@ -3535,7 +3681,7 @@ function TimeSeriesChart({
       <div className="trend-card-heading">
         <div className="trend-card-title">{label}</div>
         {latestPoint?.value !== null && latestPoint?.value !== undefined ? (
-          <div className="trend-card-latest">{formatTrendValue(latestPoint.value, prefix, suffix)}</div>
+          <div className="trend-card-latest">{formatTrendHeaderValue(latestPoint.value, prefix, suffix)}</div>
         ) : null}
       </div>
       {points.length === 0 ? (
@@ -3579,41 +3725,141 @@ function CategoryExpenseCard({ item }: { item: CategoryExpenseItem }) {
   );
 }
 
-function buildMileageAdditionTrend(records: TrendMileageRecord[]): TrendPoint[] {
+function ListPager({
+  page,
+  pageCount,
+  pageSize,
+  setPage,
+  setPageSize
+}: {
+  page: number;
+  pageCount: number;
+  pageSize: PageSizeOption;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: PageSizeOption) => void;
+}) {
+  return (
+    <div className="list-pager">
+      <div className="section-pager">
+        <button
+          className="btn btn-inline"
+          disabled={page === 0}
+          onClick={() => setPage(Math.max(0, page - 1))}
+          type="button"
+        >
+          Prev
+        </button>
+        <span className="section-pager-label">
+          {page + 1} / {pageCount}
+        </span>
+        <button
+          className="btn btn-inline"
+          disabled={page >= pageCount - 1}
+          onClick={() => setPage(Math.min(pageCount - 1, page + 1))}
+          type="button"
+        >
+          Next
+        </button>
+      </div>
+      <label className="page-size-control">
+        Rows
+        <select
+          onChange={(event) => {
+            setPageSize(Number(event.target.value) as PageSizeOption);
+            setPage(0);
+          }}
+          value={pageSize}
+        >
+          {pageSizeOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function getPagedItems<T>(items: T[], page: number, pageSize: number) {
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const activePage = Math.min(page, pageCount - 1);
+
+  return {
+    items: items.slice(activePage * pageSize, activePage * pageSize + pageSize),
+    page: activePage,
+    pageCount
+  };
+}
+
+function buildMileageAdditionTrend(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+): TrendPoint[] {
   const sorted = [...records].sort((left, right) => left.date.getTime() - right.date.getTime());
   const points = new Map<string, { label: string; value: number }>();
-  const baseline = sorted[0]?.mileage ?? null;
 
-  for (const record of sorted) {
-    if (baseline === null) {
+  for (let index = 1; index < sorted.length; index += 1) {
+    const previous = sorted[index - 1];
+    const record = sorted[index];
+    if (!isDateInWindow(record.date, dateFrom, dateTo)) {
       continue;
     }
 
+    const delta = Math.max(0, record.mileage - previous.mileage);
     const bucket = getMonthBucket(record.date);
+    const current = points.get(bucket.sortKey);
     points.set(bucket.sortKey, {
       label: bucket.label,
-      value: Math.max(points.get(bucket.sortKey)?.value ?? 0, record.mileage - baseline)
+      value: (current?.value ?? 0) + delta
     });
   }
 
-  return [...points.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, point]) => point);
+  let runningTotal = 0;
+  return [...points.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, point]) => {
+      runningTotal += point.value;
+      return {
+        label: point.label,
+        value: roundDisplayNumber(runningTotal)
+      };
+    });
 }
 
-function buildFleetMileageAdditionTrend(records: TrendMileageRecord[]): TrendPoint[] {
+function buildFleetMileageAdditionTrend(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+): TrendPoint[] {
   const byVehicle = groupMileageByVehicle(records);
-  const vehiclePoints = [...byVehicle.values()].map(buildMileageAdditionTrend);
-  const monthKeys = new Set(vehiclePoints.flatMap((points) => points.map((point) => getMonthKeyFromLabel(point.label))));
+  const monthlyTotals = new Map<string, { label: string; value: number }>();
 
-  return [...monthKeys].sort().map((sortKey) => {
-    const date = monthKeyToDate(sortKey);
-    const value = vehiclePoints.reduce((sum, points) => {
-      const point = points.find((item) => getMonthKeyFromLabel(item.label) === sortKey);
-      return sum + (point?.value ?? 0);
-    }, 0);
+  for (const vehicleRecords of byVehicle.values()) {
+    const sorted = [...vehicleRecords].sort((left, right) => left.date.getTime() - right.date.getTime());
+    for (let index = 1; index < sorted.length; index += 1) {
+      const previous = sorted[index - 1];
+      const record = sorted[index];
+      if (!isDateInWindow(record.date, dateFrom, dateTo)) {
+        continue;
+      }
 
+      const bucket = getMonthBucket(record.date);
+      const current = monthlyTotals.get(bucket.sortKey);
+      monthlyTotals.set(bucket.sortKey, {
+        label: bucket.label,
+        value: (current?.value ?? 0) + Math.max(0, record.mileage - previous.mileage)
+      });
+    }
+  }
+
+  let runningTotal = 0;
+  return [...monthlyTotals.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, point]) => {
+    runningTotal += point.value;
     return {
-      label: getMonthLabel(date),
-      value
+      label: point.label,
+      value: roundDisplayNumber(runningTotal)
     };
   });
 }
@@ -3645,13 +3891,43 @@ function buildCumulativeExpenseTrend(records: TrendServiceRecord[]): TrendPoint[
     });
 }
 
-function calculateFleetMilesDriven(records: TrendMileageRecord[]) {
+function calculateMileageAddedInWindow(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+) {
+  const sorted = [...records].sort((left, right) => left.date.getTime() - right.date.getTime());
+  if (sorted.length < 2) {
+    return null;
+  }
+
+  let total = 0;
+  let hasMileage = false;
+  for (let index = 1; index < sorted.length; index += 1) {
+    const previous = sorted[index - 1];
+    const record = sorted[index];
+    if (!isDateInWindow(record.date, dateFrom, dateTo)) {
+      continue;
+    }
+
+    total += Math.max(0, record.mileage - previous.mileage);
+    hasMileage = true;
+  }
+
+  return hasMileage ? roundDisplayNumber(total) : null;
+}
+
+function calculateFleetMilesDriven(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+) {
   const byVehicle = groupMileageByVehicle(records);
   let total = 0;
   let hasDrivenMiles = false;
 
   for (const vehicleRecords of byVehicle.values()) {
-    const milesDriven = calculateMilesDriven(vehicleRecords);
+    const milesDriven = calculateMileageAddedInWindow(vehicleRecords, dateFrom, dateTo);
     if (milesDriven !== null) {
       total += milesDriven;
       hasDrivenMiles = true;
@@ -3661,20 +3937,40 @@ function calculateFleetMilesDriven(records: TrendMileageRecord[]) {
   return hasDrivenMiles ? total : null;
 }
 
-function calculateFleetAverageMonthlyMileage(records: TrendMileageRecord[]) {
-  const byVehicle = groupMileageByVehicle(records);
-  let total = 0;
-  let hasAverage = false;
-
-  for (const vehicleRecords of byVehicle.values()) {
-    const average = calculateAverageMonthlyMileage(vehicleRecords);
-    if (average !== null) {
-      total += average;
-      hasAverage = true;
-    }
+function calculateAverageMonthlyMileageInWindow(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+) {
+  const milesAdded = calculateMileageAddedInWindow(records, dateFrom, dateTo);
+  if (milesAdded === null) {
+    return null;
   }
 
-  return hasAverage ? total : null;
+  const bounds = getMileageWindowBounds(records, dateFrom, dateTo);
+  if (!bounds) {
+    return null;
+  }
+
+  return Math.round(milesAdded / countInclusiveTrendMonths(bounds.start, bounds.end));
+}
+
+function calculateFleetAverageMonthlyMileage(
+  records: TrendMileageRecord[],
+  dateFrom: Date | null = null,
+  dateTo: Date | null = null
+) {
+  const milesAdded = calculateFleetMilesDriven(records, dateFrom, dateTo);
+  if (milesAdded === null) {
+    return null;
+  }
+
+  const bounds = getMileageWindowBounds(records, dateFrom, dateTo);
+  if (!bounds) {
+    return null;
+  }
+
+  return Math.round(milesAdded / countInclusiveTrendMonths(bounds.start, bounds.end));
 }
 
 function groupMileageByVehicle(records: TrendMileageRecord[]) {
@@ -3686,6 +3982,36 @@ function groupMileageByVehicle(records: TrendMileageRecord[]) {
   }
 
   return groups;
+}
+
+function isDateInWindow(date: Date, dateFrom: Date | null, dateTo: Date | null) {
+  if (dateFrom && date.getTime() < dateFrom.getTime()) {
+    return false;
+  }
+
+  if (dateTo && date.getTime() > dateTo.getTime()) {
+    return false;
+  }
+
+  return true;
+}
+
+function getMileageWindowBounds(records: TrendMileageRecord[], dateFrom: Date | null, dateTo: Date | null) {
+  const sorted = [...records].sort((left, right) => left.date.getTime() - right.date.getTime());
+  if (sorted.length === 0) {
+    return null;
+  }
+
+  const firstWindowRecord = sorted.find((record) => isDateInWindow(record.date, dateFrom, dateTo));
+  if (!firstWindowRecord) {
+    return null;
+  }
+
+  const lastWindowRecord = [...sorted].reverse().find((record) => isDateInWindow(record.date, dateFrom, dateTo));
+  return {
+    start: dateFrom ?? firstWindowRecord.date,
+    end: dateTo ?? lastWindowRecord?.date ?? firstWindowRecord.date
+  };
 }
 
 function toWindowedChartPoints(points: TrendPoint[], dateFrom: string, dateTo: string): ChartPoint[] {
@@ -3707,9 +4033,12 @@ function toWindowedChartPoints(points: TrendPoint[], dateFrom: string, dateTo: s
 
   while (cursor.getTime() <= endMonth.getTime()) {
     const sortKey = getMonthSortKey(cursor);
+    const explicitValue = pointMap.get(sortKey);
+    const isFutureMonth = cursor.getTime() > getMonthStart(parseIsoDateValue(todayIso())).getTime();
+    const previousValue = windowedPoints[windowedPoints.length - 1]?.value ?? null;
     windowedPoints.push({
       label: getMonthLabel(cursor),
-      value: pointMap.get(sortKey) ?? null
+      value: explicitValue ?? (isFutureMonth ? null : previousValue)
     });
     cursor.setUTCMonth(cursor.getUTCMonth() + 1);
   }
@@ -3895,6 +4224,13 @@ function formatCurrency(value: number | null) {
   }).format(value);
 }
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2
+  }).format(value);
+}
+
 function formatProfileDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { timeZone: "UTC" }).format(new Date(value));
 }
@@ -3986,8 +4322,7 @@ function getFleetMileageTimelineRows(records: FleetInsightRecord[], sortDirectio
     .sort((left, right) => {
       const order = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
       return sortDirection === "oldest" ? order : -order;
-    })
-    .slice(0, 20);
+    });
 }
 
 function getLatestChartValue(points: ChartPoint[]) {
@@ -4027,6 +4362,26 @@ function parseDisplayDate(value: string) {
 function parseIsoDateValue(value: string) {
   const [year, month, day] = value.split("-");
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+}
+
+function getVehicleTrendMinDate(car: CarDetails) {
+  const recordDates = [
+    car.createdAt,
+    ...car.serviceHistory.map((service) => formatDateForInput(service.date)),
+    ...car.mileageHistory.map((entry) => formatDateForInput(entry.date))
+  ];
+
+  return getEarliestIsoDate(recordDates) ?? car.createdAt;
+}
+
+function getFleetTrendMinDate(records: FleetInsightRecord[]) {
+  return getEarliestIsoDate(
+    records.flatMap((car) => [
+      car.createdAt,
+      ...car.serviceHistory.map((service) => formatDateForInput(service.date)),
+      ...car.mileageHistory.map((entry) => formatDateForInput(entry.date))
+    ])
+  );
 }
 
 function applyTrendPreset(
@@ -4084,6 +4439,12 @@ function addMonths(date: Date, months: number) {
   return new Date(Date.UTC(date.getFullYear(), date.getMonth() + months, date.getDate()));
 }
 
+function countInclusiveTrendMonths(start: Date, end: Date) {
+  const yearDelta = end.getUTCFullYear() - start.getUTCFullYear();
+  const monthDelta = end.getUTCMonth() - start.getUTCMonth();
+  return Math.max(1, yearDelta * 12 + monthDelta + 1);
+}
+
 function toIsoDate(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(
     date.getUTCDate()
@@ -4095,6 +4456,10 @@ function getMonthBucket(date: Date) {
     label: getMonthLabel(date),
     sortKey: getMonthSortKey(date)
   };
+}
+
+function getMonthStart(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
 function getMonthLabel(date: Date) {
@@ -4126,7 +4491,14 @@ function getLastTrendMonth(points: TrendPoint[]) {
 }
 
 function formatTrendValue(value: number, prefix: string, suffix: string) {
-  return `${prefix}${Math.round(value).toLocaleString("en-US")}${suffix}`;
+  return `${prefix}${formatNumber(roundDisplayNumber(value))}${suffix}`;
+}
+
+function formatTrendHeaderValue(value: number, prefix: string, suffix: string) {
+  return `${prefix}${roundDisplayNumber(value).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2
+  })}${suffix}`;
 }
 
 function formatChartWindow(points: ChartPoint[]) {

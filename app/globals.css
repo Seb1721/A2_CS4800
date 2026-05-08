@@ -2063,6 +2063,114 @@ textarea {
   text-align: center;
 }
 
+.list-pager {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.page-size-control {
+  align-items: center;
+  color: #455867;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.page-size-control select {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 5px 8px;
+  width: auto;
+}
+
+.list-density-10,
+.list-density-10 .mileage-table-row span,
+.list-density-10 .timeline-notes,
+.list-density-10 .preview-main,
+.list-density-10 .preview-sub,
+.list-density-10 .preview-value,
+.list-density-10 .preview-meta,
+.list-density-10 .workspace-table td,
+.workspace-table.list-density-10 td {
+  font-size: 12px;
+}
+
+.list-density-15,
+.list-density-15 .mileage-table-row span,
+.list-density-15 .timeline-notes,
+.list-density-15 .preview-main,
+.list-density-15 .preview-sub,
+.list-density-15 .preview-value,
+.list-density-15 .preview-meta,
+.list-density-15 .workspace-table td,
+.workspace-table.list-density-15 td {
+  font-size: 11px;
+}
+
+.truncate-text,
+.truncate-cell {
+  max-width: min(34vw, 320px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-heading-action {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.notes-popover {
+  align-items: center;
+  background: rgba(22, 33, 43, 0.52);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 30;
+}
+
+.notes-popover-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 50px rgba(13, 23, 31, 0.28);
+  max-width: 680px;
+  padding: 18px;
+  width: min(680px, 100%);
+}
+
+.notes-popup-list {
+  display: grid;
+  gap: 8px;
+}
+
+.notes-popup-row {
+  background: #fffaf3;
+  border: 1px solid #d8caba;
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.notes-popup-row strong {
+  color: #20313f;
+  font-size: 13px;
+}
+
+.notes-popup-row span {
+  color: #405261;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .section-link {
   color: #203545;
   font-size: 13px;
