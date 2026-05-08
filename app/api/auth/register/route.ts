@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       isRateLimitError(error)
         ? 429
         : message === "Username must be at least 3 characters." ||
-          message === "Password must be at least 12 characters." ||
+          message === "Password must be at least 8 characters." ||
           message === "Password must include a lowercase letter." ||
           message === "Password must include an uppercase letter." ||
           message === "Password must include a number." ||

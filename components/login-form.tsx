@@ -132,7 +132,7 @@ export function LoginForm() {
             ) : null}
 
             <div className="field-group">
-              <label htmlFor="username">Username/Email</label>
+              <label htmlFor="username">{mode === "login" ? "Username/Email" : "Username"}</label>
               <input
                 autoComplete="username"
                 id="username"
@@ -148,7 +148,7 @@ export function LoginForm() {
               <input
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 id="password"
-                minLength={12}
+                minLength={8}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 type="password"
@@ -159,7 +159,7 @@ export function LoginForm() {
                   <span className={`password-strength password-strength-${passwordStrength.tone}`}>
                     {passwordStrength.label}
                   </span>
-                  <span>Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</span>
+                  <span>Use at least 8 characters with uppercase, lowercase, a number, and a symbol.</span>
                 </div>
               ) : null}
             </div>
@@ -185,11 +185,11 @@ function getPasswordStrength(password: string) {
 
   let score = 0;
 
-  if (password.length >= 12) {
+  if (password.length >= 8) {
     score += 1;
   }
 
-  if (password.length >= 16) {
+  if (password.length >= 12) {
     score += 1;
   }
 
