@@ -136,8 +136,9 @@ button:not(:disabled),
 
 .field-row {
   display: grid;
-  gap: 12px;
+  column-gap: 28px;
   grid-template-columns: 1fr 1fr;
+  row-gap: 12px;
 }
 
 .currency-input {
@@ -145,24 +146,21 @@ button:not(:disabled),
 }
 
 .currency-input span {
-  align-items: center;
   color: #445765;
-  display: flex;
   font-size: 16px;
   font-weight: 800;
-  left: 0;
   line-height: 1;
   pointer-events: none;
   position: absolute;
+  right: calc(100% + 8px);
   top: 50%;
   transform: translateY(-50%);
-  justify-content: center;
-  width: 42px;
   z-index: 1;
 }
 
 .currency-input input {
-  padding-left: 52px;
+  padding-left: 12px;
+  text-align: left;
 }
 
 .password-guidance {
