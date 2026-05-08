@@ -91,7 +91,7 @@ export function LoginForm() {
               onClick={() => setMode("login")}
               type="button"
             >
-              Log In
+              Sign In
             </button>
             <button
               className={mode === "register" ? "switch-chip active" : "switch-chip"}
@@ -170,7 +170,7 @@ export function LoginForm() {
               {isSubmitting
                 ? "Working..."
                 : mode === "login"
-                  ? "Log In"
+                  ? "Sign In"
                   : "Create Account"}
             </button>
           </form>

@@ -247,8 +247,8 @@ export function calculateReminderStatus(input: {
       nextServiceMileage,
       reason:
         input.serviceLabel === undefined
-          ? `${Math.abs(milesUntilDue).toLocaleString()} miles overdue for service.`
-          : `${serviceLabel} overdue by ${Math.abs(milesUntilDue).toLocaleString()} miles.`
+          ? `${Math.abs(milesUntilDue).toLocaleString("en-US")} miles overdue for service.`
+          : `${serviceLabel} overdue by ${Math.abs(milesUntilDue).toLocaleString("en-US")} miles.`
     };
   }
 
@@ -276,8 +276,8 @@ export function calculateReminderStatus(input: {
       reason:
         milesUntilDue <= 500
           ? input.serviceLabel === undefined
-            ? `Service due in ${milesUntilDue.toLocaleString()} miles.`
-            : `${serviceLabel} due in ${milesUntilDue.toLocaleString()} miles.`
+            ? `Service due in ${milesUntilDue.toLocaleString("en-US")} miles.`
+            : `${serviceLabel} due in ${milesUntilDue.toLocaleString("en-US")} miles.`
           : input.serviceLabel === undefined
             ? `Service due in ${daysUntilDue} days.`
             : `${serviceLabel} due in ${daysUntilDue} days.`
