@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SyntheticEvent, useEffect, useRef, useState } from "react";
+import { ReactNode, SyntheticEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { trackEvent } from "@/lib/analytics";
@@ -1924,6 +1924,11 @@ function AnalyticsIndexView({
         dateTo={trendDateTo}
         maxDate={maxTrendDate}
         minDate={minTrendDate}
+        onApply={(nextDateFrom, nextDateTo, nextServiceType) => {
+          setTrendDateFrom(clampIsoDate(nextDateFrom, minTrendDate, maxTrendDate));
+          setTrendDateTo(clampIsoDate(nextDateTo, minTrendDate, maxTrendDate));
+          setTrendServiceTypeFilter(nextServiceType);
+        }}
         onPreset={setTrendPreset}
         onServiceTypeChange={setTrendServiceTypeFilter}
         onSetDateFrom={setTrendDateFrom}
@@ -1931,23 +1936,25 @@ function AnalyticsIndexView({
         serviceType={trendServiceTypeFilter}
         serviceTypeOptions={serviceTypeOptions}
         title="Fleet Trend Window"
-      />
-
-      <div className="trend-grid">
-        <TimeSeriesChart
-          emptyLabel="Fleet mileage trends appear after odometer entries are recorded."
-          label="Fleet Miles Added"
-          points={fleetMileagePoints}
-          suffix=" mi"
-          yCeilingMultiplier={1.5}
-        />
-        <TimeSeriesChart
-          emptyLabel="Fleet spending trends appear after priced service records are added."
-          label="Fleet Total Spending"
-          points={fleetExpensePoints}
-          prefix="$"
-        />
-      </div>
+      >
+        <div className="trend-grid">
+          <TimeSeriesChart
+            emptyLabel="Fleet mileage trends appear after odometer entries are recorded."
+            label="Fleet Miles Added"
+            points={fleetMileagePoints}
+            suffix=" mi"
+            yAxisLabel="Miles added"
+            yCeilingMultiplier={1.5}
+          />
+          <TimeSeriesChart
+            emptyLabel="Fleet spending trends appear after priced service records are added."
+            label="Fleet Total Spending"
+            points={fleetExpensePoints}
+            prefix="$"
+            yAxisLabel="Total spending"
+          />
+        </div>
+      </TrendFilterPanel>
 
       <div className="records-grid analytics-grid">
         <section className="workspace-panel">
@@ -2905,6 +2912,11 @@ function VehicleInsightsView({
         dateTo={trendDateTo}
         maxDate={maxTrendDate}
         minDate={minTrendDate}
+        onApply={(nextDateFrom, nextDateTo, nextServiceType) => {
+          setTrendDateFrom(clampIsoDate(nextDateFrom, minTrendDate, maxTrendDate));
+          setTrendDateTo(clampIsoDate(nextDateTo, minTrendDate, maxTrendDate));
+          setTrendServiceTypeFilter(nextServiceType);
+        }}
         onPreset={setTrendPreset}
         onServiceTypeChange={setTrendServiceTypeFilter}
         onSetDateFrom={setTrendDateFrom}
@@ -2912,23 +2924,25 @@ function VehicleInsightsView({
         serviceType={trendServiceTypeFilter}
         serviceTypeOptions={serviceTypeOptions}
         title="Vehicle Trend Window"
-      />
-
-      <div className="trend-grid">
-        <TimeSeriesChart
-          emptyLabel="Mileage trends appear after multiple odometer entries."
-          label="Miles Added"
-          points={trendMileagePoints}
-          suffix=" mi"
-          yCeilingMultiplier={1.5}
-        />
-        <TimeSeriesChart
-          emptyLabel="Expense trends appear after priced service records."
-          label="Total Spending"
-          points={trendExpensePoints}
-          prefix="$"
-        />
-      </div>
+      >
+        <div className="trend-grid">
+          <TimeSeriesChart
+            emptyLabel="Mileage trends appear after multiple odometer entries."
+            label="Miles Added"
+            points={trendMileagePoints}
+            suffix=" mi"
+            yAxisLabel="Miles added"
+            yCeilingMultiplier={1.5}
+          />
+          <TimeSeriesChart
+            emptyLabel="Expense trends appear after priced service records."
+            label="Total Spending"
+            points={trendExpensePoints}
+            prefix="$"
+            yAxisLabel="Total spending"
+          />
+        </div>
+      </TrendFilterPanel>
 
       <section className="workspace-panel">
         <div className="workspace-panel-header">
@@ -3348,10 +3362,12 @@ function MileageEntryCard({
 }
 
 function TrendFilterPanel({
+  children,
   dateFrom,
   dateTo,
   maxDate,
   minDate,
+  onApply,
   onPreset,
   onServiceTypeChange,
   onSetDateFrom,
@@ -3360,10 +3376,12 @@ function TrendFilterPanel({
   serviceTypeOptions,
   title
 }: {
+  children: ReactNode;
   dateFrom: string;
   dateTo: string;
   maxDate: string;
   minDate: string;
+  onApply: (dateFrom: string, dateTo: string, serviceType: string) => void;
   onPreset: (preset: TrendPreset) => void;
   onServiceTypeChange: (value: string) => void;
   onSetDateFrom: (value: string) => void;
@@ -3372,6 +3390,21 @@ function TrendFilterPanel({
   serviceTypeOptions: string[];
   title: string;
 }) {
+  const [draftDateFrom, setDraftDateFrom] = useState(dateFrom);
+  const [draftDateTo, setDraftDateTo] = useState(dateTo);
+  const [draftServiceType, setDraftServiceType] = useState(serviceType);
+
+  useEffect(() => {
+    setDraftDateFrom(dateFrom);
+    setDraftDateTo(dateTo);
+    setDraftServiceType(serviceType);
+  }, [dateFrom, dateTo, serviceType]);
+
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onApply(draftDateFrom, draftDateTo, draftServiceType);
+  }
+
   return (
     <section className="workspace-panel">
       <div className="workspace-panel-header">
@@ -3397,16 +3430,16 @@ function TrendFilterPanel({
           All Time
         </button>
       </div>
-      <div className="toolbar-grid">
+      <form className="toolbar-grid" onSubmit={handleSubmit}>
         <div className="field-group">
           <label htmlFor={`${title}-trendDateFrom`}>From Date</label>
           <input
             id={`${title}-trendDateFrom`}
             max={maxDate}
             min={minDate}
-            onChange={(event) => onSetDateFrom(event.target.value)}
+            onChange={(event) => setDraftDateFrom(event.target.value)}
             type="date"
-            value={dateFrom}
+            value={draftDateFrom}
           />
         </div>
         <div className="field-group">
@@ -3415,17 +3448,17 @@ function TrendFilterPanel({
             id={`${title}-trendDateTo`}
             max={maxDate}
             min={minDate}
-            onChange={(event) => onSetDateTo(event.target.value)}
+            onChange={(event) => setDraftDateTo(event.target.value)}
             type="date"
-            value={dateTo}
+            value={draftDateTo}
           />
         </div>
         <div className="field-group">
           <label htmlFor={`${title}-trendServiceType`}>Service Category</label>
           <select
             id={`${title}-trendServiceType`}
-            onChange={(event) => onServiceTypeChange(event.target.value)}
-            value={serviceType}
+            onChange={(event) => setDraftServiceType(event.target.value)}
+            value={draftServiceType}
           >
             <option value="all">All categories</option>
             {serviceTypeOptions.map((option) => (
@@ -3435,7 +3468,14 @@ function TrendFilterPanel({
             ))}
           </select>
         </div>
-      </div>
+        <div className="field-group trend-apply-group">
+          <label aria-hidden="true">&nbsp;</label>
+          <button className="btn btn-primary" type="submit">
+            Apply Window
+          </button>
+        </div>
+      </form>
+      {children}
     </section>
   );
 }
@@ -3446,6 +3486,7 @@ function TimeSeriesChart({
   points,
   prefix = "",
   suffix = "",
+  yAxisLabel,
   yCeilingMultiplier = 1.15
 }: {
   emptyLabel: string;
@@ -3453,11 +3494,13 @@ function TimeSeriesChart({
   points: ChartPoint[];
   prefix?: string;
   suffix?: string;
+  yAxisLabel: string;
   yCeilingMultiplier?: number;
 }) {
   const chart = buildLineChart(points, yCeilingMultiplier);
   const latestPoint = [...points].reverse().find((point) => point.value !== null) ?? null;
   const hasPlottedData = chart.points.length > 0;
+  const windowLabel = formatChartWindow(points);
 
   return (
     <div className="trend-card">
@@ -3471,6 +3514,7 @@ function TimeSeriesChart({
         <div className="muted-text">{emptyLabel}</div>
       ) : (
         <div className="line-chart">
+          <div className="line-chart-y-title">{yAxisLabel}</div>
           <svg aria-label={label} preserveAspectRatio="none" role="img" viewBox="0 0 640 260">
             <line className="line-chart-grid" x1="44" x2="610" y1="34" y2="34" />
             <line className="line-chart-grid" x1="44" x2="610" y1="128" y2="128" />
@@ -3484,14 +3528,10 @@ function TimeSeriesChart({
           </svg>
           {!hasPlottedData ? <div className="line-chart-empty">No records in this window</div> : null}
           <div className="line-chart-scale">
-            <span>{formatTrendValue(chart.maxValue, prefix, suffix)}</span>
-            <span>{formatTrendValue(chart.minValue, prefix, suffix)}</span>
+            <span>Y max: {formatTrendValue(chart.maxValue, prefix, suffix)}</span>
+            <span>Y min: {formatTrendValue(chart.minValue, prefix, suffix)}</span>
           </div>
-          <div className="line-chart-labels">
-            <span>{points[0]?.label}</span>
-            <span>{points[Math.floor((points.length - 1) / 2)]?.label}</span>
-            <span>{points[points.length - 1]?.label}</span>
-          </div>
+          <div className="line-chart-window">X window: {windowLabel}</div>
         </div>
       )}
     </div>
@@ -3656,8 +3696,8 @@ function buildLineChart(points: ChartPoint[], yCeilingMultiplier: number) {
   const values = points.map((point) => point.value).filter((value): value is number => value !== null);
   const rawMinValue = values.length ? Math.min(...values) : 0;
   const rawMaxValue = values.length ? Math.max(...values) : 0;
-  const minValue = 0;
-  const maxValue = Math.max(1, rawMaxValue * yCeilingMultiplier);
+  const minValue = roundAxisDown(Math.min(0, rawMinValue));
+  const maxValue = roundAxisUp(Math.max(10, rawMaxValue * yCeilingMultiplier));
   const range = Math.max(1, maxValue - minValue);
   const plottedPoints = points.map((point, index) => {
     const x = points.length === 1 ? (left + right) / 2 : left + (index / (points.length - 1)) * (right - left);
@@ -4045,6 +4085,29 @@ function getLastTrendMonth(points: TrendPoint[]) {
 
 function formatTrendValue(value: number, prefix: string, suffix: string) {
   return `${prefix}${Math.round(value).toLocaleString("en-US")}${suffix}`;
+}
+
+function formatChartWindow(points: ChartPoint[]) {
+  const first = points[0]?.label;
+  const last = points[points.length - 1]?.label;
+
+  if (!first && !last) {
+    return "No window selected";
+  }
+
+  if (!last || first === last) {
+    return first ?? last;
+  }
+
+  return `${first} to ${last}`;
+}
+
+function roundAxisUp(value: number) {
+  return Math.ceil(value / 10) * 10;
+}
+
+function roundAxisDown(value: number) {
+  return Math.floor(value / 10) * 10;
 }
 
 function roundDisplayNumber(value: number) {

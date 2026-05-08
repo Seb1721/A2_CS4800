@@ -1217,8 +1217,12 @@ textarea {
 .toolbar-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1.35fr 0.85fr 0.85fr 0.85fr 0.95fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 16px;
+}
+
+.trend-apply-group .btn {
+  width: 100%;
 }
 
 .trend-preset-row {
@@ -1232,6 +1236,7 @@ textarea {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
 }
 
 .trend-card {
@@ -1262,8 +1267,21 @@ textarea {
 }
 
 .line-chart {
+  min-height: 282px;
   padding: 4px 0 0;
   position: relative;
+}
+
+.line-chart-y-title {
+  color: #455867;
+  font-size: 11px;
+  font-weight: 800;
+  left: -2px;
+  letter-spacing: 0.06em;
+  position: absolute;
+  text-transform: uppercase;
+  top: 0;
+  z-index: 1;
 }
 
 .line-chart-empty {
@@ -1309,7 +1327,6 @@ textarea {
   stroke-width: 3;
 }
 
-.line-chart-labels,
 .line-chart-scale {
   color: #455867;
   display: flex;
@@ -1324,8 +1341,12 @@ textarea {
   position: absolute;
 }
 
-.line-chart-labels {
+.line-chart-window {
+  color: #455867;
+  font-size: 12px;
+  font-weight: 800;
   margin-top: -2px;
+  text-align: center;
 }
 
 .category-section {
