@@ -223,12 +223,9 @@ export function calculateReminderStatus(input: {
       daysUntilDue: null,
       isOverdue: false,
       milesUntilDue: null,
-      needsAttention: true,
+      needsAttention: false,
       nextServiceMileage: null,
-      reason:
-        input.serviceLabel === undefined
-          ? "No service history recorded yet."
-          : `No ${serviceLabel} history recorded yet.`
+      reason: null
     };
   }
 
@@ -247,8 +244,8 @@ export function calculateReminderStatus(input: {
       nextServiceMileage,
       reason:
         input.serviceLabel === undefined
-          ? `${Math.abs(milesUntilDue).toLocaleString()} miles overdue for service.`
-          : `${serviceLabel} overdue by ${Math.abs(milesUntilDue).toLocaleString()} miles.`
+          ? `${Math.abs(milesUntilDue).toLocaleString("en-US")} miles overdue for service.`
+          : `${serviceLabel} overdue by ${Math.abs(milesUntilDue).toLocaleString("en-US")} miles.`
     };
   }
 
@@ -266,7 +263,7 @@ export function calculateReminderStatus(input: {
     };
   }
 
-  if (milesUntilDue <= 500 || daysUntilDue <= 30) {
+  if (milesUntilDue <= serviceIntervalMiles / 2 || daysUntilDue <= 30) {
     return {
       daysUntilDue,
       isOverdue: false,
@@ -274,10 +271,10 @@ export function calculateReminderStatus(input: {
       needsAttention: true,
       nextServiceMileage,
       reason:
-        milesUntilDue <= 500
+        milesUntilDue <= serviceIntervalMiles / 2
           ? input.serviceLabel === undefined
-            ? `Service due in ${milesUntilDue.toLocaleString()} miles.`
-            : `${serviceLabel} due in ${milesUntilDue.toLocaleString()} miles.`
+            ? `Service due in ${milesUntilDue.toLocaleString("en-US")} miles.`
+            : `${serviceLabel} due in ${milesUntilDue.toLocaleString("en-US")} miles.`
           : input.serviceLabel === undefined
             ? `Service due in ${daysUntilDue} days.`
             : `${serviceLabel} due in ${daysUntilDue} days.`
@@ -312,6 +309,7 @@ export function getFleetHighlights(vehicles: FleetVehicleLike[]): FleetHighlight
 }
 
 export function calculateCategoryReminderStatuses(input: {
+  baselineService?: { date: Date; mileage: number } | null;
   currentDate?: Date;
   currentMileage: number;
   rules: ReminderRule[];
@@ -321,7 +319,8 @@ export function calculateCategoryReminderStatuses(input: {
 
   return input.rules
     .map((rule) => {
-      const latestService = getLatestServiceForType(input.serviceHistory, rule.serviceType);
+      const latestService =
+        getLatestServiceForType(input.serviceHistory, rule.serviceType) ?? input.baselineService ?? null;
       const status = calculateReminderStatus({
         currentDate,
         currentMileage: input.currentMileage,

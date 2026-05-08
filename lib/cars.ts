@@ -13,7 +13,6 @@ import {
   roundCurrency
 } from "@/lib/car-insights";
 import { getDatabase } from "@/lib/mongodb";
-import { summarizeReportServices } from "@/lib/reporting-core";
 import { COMMON_SERVICE_TYPES } from "@/lib/service-types";
 import type {
   AttentionItem,
@@ -21,13 +20,11 @@ import type {
   CarSummary,
   DashboardOverview,
   DashboardRecentService,
+  MaintenanceAppointment,
   MileageHistoryItem,
-  ReportSummary,
   ServiceReminderRule,
   ServiceHistoryItem
 } from "@/lib/types";
-
-export { buildReportCsv } from "@/lib/reporting-core";
 
 type ServiceEntry = {
   serviceId: number;
@@ -50,6 +47,13 @@ type MileageEntry = {
 
 type ReminderRuleDocument = ServiceReminderRule;
 
+type MaintenanceAppointmentDocument = {
+  appointmentId: number;
+  date: Date;
+  notes: string;
+  serviceType: string;
+};
+
 type CarDocument = {
   carId: number;
   ownerUsername: string;
@@ -61,6 +65,7 @@ type CarDocument = {
   serviceIntervalDays?: number;
   serviceIntervalMiles?: number;
   serviceReminderRules?: ReminderRuleDocument[];
+  maintenanceAppointments?: MaintenanceAppointmentDocument[];
   serviceHistory: ServiceEntry[];
   mileageHistory?: MileageEntry[];
   serviceCount: number;
@@ -77,6 +82,7 @@ type CreateCarInput = {
   mileage: number;
   imageUrl: string;
   serviceReminderRules: ReminderRuleDocument[];
+  maintenanceAppointments?: MaintenanceAppointment[];
 };
 
 type UpdateCarInput = {
@@ -86,6 +92,7 @@ type UpdateCarInput = {
   mileage: number;
   imageUrl: string;
   serviceReminderRules: ReminderRuleDocument[];
+  maintenanceAppointments?: MaintenanceAppointment[];
   allowMileageCorrection: boolean;
 };
 
@@ -116,12 +123,6 @@ type AddServiceInput = {
 
 type UpdateServiceInput = AddServiceInput;
 
-type ReportFilters = {
-  carId?: number | null;
-  dateFrom?: string | null;
-  dateTo?: string | null;
-};
-
 export async function listCarsForUser(username: string): Promise<CarSummary[]> {
   const db = await getDatabase();
   const cars = db.collection<CarDocument>("cars");
@@ -137,7 +138,11 @@ export async function getCarDetailsForUser(username: string, carId: number): Pro
 export async function createCar(username: string, input: CreateCarInput): Promise<CarDetails> {
   const db = await getDatabase();
   const cars = db.collection<CarDocument>("cars");
-  const { imageUrl, make, mileage, serviceReminderRules, model, year } = validateVehicleFields(input);
+  const { imageUrl, maintenanceAppointments, make, mileage, serviceReminderRules, model, year } =
+    validateVehicleFields(input);
+  const appointmentIds = await Promise.all(
+    maintenanceAppointments.map(() => nextSequence("maintenanceAppointments"))
+  );
   const [carId, entryId] = await Promise.all([nextSequence("cars"), nextSequence("mileageEntries")]);
   const now = new Date();
   const primaryRule = getPrimaryServiceRule(serviceReminderRules);
@@ -153,6 +158,10 @@ export async function createCar(username: string, input: CreateCarInput): Promis
     serviceIntervalDays: primaryRule?.intervalDays,
     serviceIntervalMiles: primaryRule?.intervalMiles,
     serviceReminderRules,
+    maintenanceAppointments: maintenanceAppointments.map((appointment, index) => ({
+      ...appointment,
+      appointmentId: appointmentIds[index] ?? index + 1
+    })),
     serviceHistory: [],
     mileageHistory: [
       {
@@ -182,11 +191,22 @@ export async function updateCarForUser(
   const db = await getDatabase();
   const cars = db.collection<CarDocument>("cars");
   const existing = await findCarForUser(username, carId);
-  const { imageUrl, make, mileage, serviceReminderRules, model, year } = validateVehicleFields(input);
+  const { imageUrl, maintenanceAppointments, make, mileage, serviceReminderRules, model, year } =
+    validateVehicleFields(input);
   const primaryRule = getPrimaryServiceRule(serviceReminderRules);
+  const appointmentIds = await Promise.all(
+    maintenanceAppointments.map((appointment) =>
+      appointment.appointmentId > 0 ? appointment.appointmentId : nextSequence("maintenanceAppointments")
+    )
+  );
+  const normalizedAppointments = maintenanceAppointments.map((appointment, index) => ({
+    ...appointment,
+    appointmentId: appointmentIds[index] ?? appointment.appointmentId
+  }));
   const updates: Partial<CarDocument> = {
     imageUrl,
     make,
+    maintenanceAppointments: normalizedAppointments,
     model,
     serviceIntervalDays: primaryRule?.intervalDays,
     serviceIntervalMiles: primaryRule?.intervalMiles,
@@ -231,6 +251,7 @@ export async function updateCarForUser(
     currentMileage,
     imageUrl,
     make,
+    maintenanceAppointments: normalizedAppointments,
     mileageHistory,
     model,
     serviceIntervalDays: primaryRule?.intervalDays ?? existing.serviceIntervalDays,
@@ -654,8 +675,8 @@ export async function listAttentionVehicles(username: string): Promise<Attention
   const records = await cars.find({ ownerUsername: username }).sort({ carId: 1 }).toArray();
 
   return records
-    .flatMap((car) =>
-      getCategoryReminderStatuses(car)
+    .flatMap((car) => [
+      ...getCategoryReminderStatuses(car)
         .filter((status) => status.needsAttention && status.reason)
         .map((status) => ({
           carId: car.carId,
@@ -666,9 +687,11 @@ export async function listAttentionVehicles(username: string): Promise<Attention
           milesUntilDue: status.milesUntilDue,
           reason: status.reason ?? `${status.serviceType} needs attention.`,
           serviceType: status.serviceType,
-          status: isOverdueReminder(status) ? ("overdue" as const) : ("due-soon" as const)
-        }))
-    )
+          status: isOverdueReminder(status) ? ("overdue" as const) : ("due-soon" as const),
+          type: "reminder" as const
+        })),
+      ...getAppointmentAttentionItems(car)
+    ])
     .sort(compareAttentionItems);
 }
 
@@ -677,6 +700,7 @@ export async function getDashboardOverview(username: string): Promise<DashboardO
   const cars = db.collection<CarDocument>("cars");
   const records = await cars.find({ ownerUsername: username }).toArray();
   const reminderStatuses = records.flatMap((car) => getCategoryReminderStatuses(car));
+  const appointmentStatuses = records.flatMap(getAppointmentAttentionItems);
   const totalVehicles = records.length;
   const totalServiceRecords = records.reduce((sum, car) => sum + car.serviceCount, 0);
   const totalExpenses = roundCurrency(records.reduce((sum, car) => sum + car.lifetimeCost, 0));
@@ -684,11 +708,17 @@ export async function getDashboardOverview(username: string): Promise<DashboardO
   const knownServiceCosts = records.flatMap((car) =>
     car.serviceHistory.map((service) => service.cost).filter((cost): cost is number => cost !== null)
   );
-  const flaggedVehicleCount = records.filter((car) => getCategoryReminderStatuses(car).some((status) => status.needsAttention)).length;
-  const overdueCount = reminderStatuses.filter((status) => isOverdueReminder(status)).length;
+  const flaggedVehicleCount = records.filter(
+    (car) =>
+      getCategoryReminderStatuses(car).some((status) => status.needsAttention) ||
+      getAppointmentAttentionItems(car).length > 0
+  ).length;
+  const overdueCount =
+    reminderStatuses.filter((status) => isOverdueReminder(status)).length +
+    appointmentStatuses.filter((status) => status.status === "overdue").length;
   const dueSoonCount = reminderStatuses.filter(
     (status) => status.needsAttention && !isOverdueReminder(status)
-  ).length;
+  ).length + appointmentStatuses.filter((status) => status.status === "due-soon").length;
 
   return {
     averageMileage: totalVehicles ? Math.round(totalMileage / totalVehicles) : null,
@@ -702,51 +732,6 @@ export async function getDashboardOverview(username: string): Promise<DashboardO
     totalExpenses,
     totalServiceRecords,
     totalVehicles
-  };
-}
-
-export async function getReportSummaryForUser(
-  username: string,
-  filters: ReportFilters = {}
-): Promise<ReportSummary> {
-  if (filters.carId !== undefined && filters.carId !== null) {
-    if (!Number.isInteger(filters.carId) || filters.carId <= 0) {
-      throw new Error("Report vehicle scope must be a valid car ID.");
-    }
-  }
-
-  const db = await getDatabase();
-  const cars = db.collection<CarDocument>("cars");
-  const carFilter =
-    filters.carId && Number.isInteger(filters.carId) && filters.carId > 0
-      ? { ownerUsername: username, carId: filters.carId }
-      : { ownerUsername: username };
-  const records = await cars.find(carFilter).sort({ carId: 1 }).toArray();
-
-  const services = records
-    .flatMap((car) =>
-      car.serviceHistory.map((service) => ({
-        carId: car.carId,
-        carName: `${car.year} ${car.make} ${car.model}`,
-        cost: service.cost,
-        date: service.date,
-        description: service.description,
-        mileage: service.mileage,
-        notes: service.notes,
-        serviceId: service.serviceId,
-        serviceType: service.serviceType
-      }))
-    );
-
-  return {
-    ...summarizeReportServices({
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-      selectedCarId: filters.carId ?? null,
-      services,
-      vehiclesInScope: records.length
-    }),
-    vehiclesInScope: records.length
   };
 }
 
@@ -826,6 +811,9 @@ function toCarDetails(car: CarDocument): CarDetails {
     needsAttention: reminderStatus.needsAttention,
     nextServiceMileage: reminderStatus.nextServiceMileage,
     serviceReminderRules: getServiceReminderRules(car),
+    maintenanceAppointments: [...getMaintenanceAppointments(car)]
+      .sort((left, right) => left.date.getTime() - right.date.getTime())
+      .map(toMaintenanceAppointment),
     serviceIntervalDays: primaryRule?.intervalDays ?? DEFAULT_SERVICE_INTERVAL_DAYS,
     serviceIntervalMiles: primaryRule?.intervalMiles ?? DEFAULT_SERVICE_INTERVAL_MILES,
     serviceHistory: sortedServices
@@ -911,6 +899,7 @@ function validateVehicleFields(input: CreateCarInput | UpdateCarInput) {
   const mileage = Number(input.mileage);
   const imageUrl = input.imageUrl.trim();
   const serviceReminderRules = validateReminderRules(input.serviceReminderRules);
+  const maintenanceAppointments = validateMaintenanceAppointments(input.maintenanceAppointments ?? []);
 
   if (!make || !model) {
     throw new Error("Make and model are required.");
@@ -924,7 +913,7 @@ function validateVehicleFields(input: CreateCarInput | UpdateCarInput) {
     throw new Error("Mileage cannot be negative.");
   }
 
-  return { imageUrl, make, mileage, model, serviceReminderRules, year };
+  return { imageUrl, maintenanceAppointments, make, mileage, model, serviceReminderRules, year };
 }
 
 function parseMmDdYy(value: string) {
@@ -986,6 +975,12 @@ function formatMmDdYy(date: Date | null) {
   const day = String(date.getUTCDate()).padStart(2, "0");
   const year = String(date.getUTCFullYear()).slice(-2);
   return `${month}/${day}/${year}`;
+}
+
+function formatIsoDate(date: Date) {
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${month}-${day}`;
 }
 
 function parseCost(value: unknown) {
@@ -1076,11 +1071,21 @@ function getCategoryReminderStatuses(car: CarDocument) {
   }
 
   return calculateCategoryReminderStatuses({
+    baselineService: getInitialMileageBaseline(car),
     currentDate: new Date(),
     currentMileage: car.currentMileage,
     rules,
     serviceHistory: car.serviceHistory
   });
+}
+
+function getInitialMileageBaseline(car: CarDocument) {
+  const mileageHistory = getMileageHistory(car);
+  if (mileageHistory.length === 0) {
+    return null;
+  }
+
+  return [...mileageHistory].sort((left, right) => left.date.getTime() - right.date.getTime())[0];
 }
 
 function validateReminderRules(input: unknown): ReminderRuleDocument[] {
@@ -1089,7 +1094,7 @@ function validateReminderRules(input: unknown): ReminderRuleDocument[] {
   }
 
   const seenTypes = new Set<string>();
-  return input.map((rule, index) => {
+    return input.map((rule, index) => {
     const serviceType = String((rule as ReminderRuleDocument | undefined)?.serviceType ?? "").trim();
     const intervalMiles = Number((rule as ReminderRuleDocument | undefined)?.intervalMiles);
     const intervalDays = Number((rule as ReminderRuleDocument | undefined)?.intervalDays);
@@ -1121,6 +1126,91 @@ function validateReminderRules(input: unknown): ReminderRuleDocument[] {
       serviceType
     };
   });
+}
+
+function validateMaintenanceAppointments(input: unknown): MaintenanceAppointmentDocument[] {
+  if (!Array.isArray(input)) {
+    throw new Error("Maintenance appointments must be a list.");
+  }
+
+  return input
+    .map((appointment, index) => {
+      const raw = appointment as MaintenanceAppointment | undefined;
+      const serviceType = String(raw?.serviceType ?? "").trim();
+      const notes = String(raw?.notes ?? "").trim();
+      const appointmentId = Number(raw?.appointmentId ?? 0);
+      const dateInput = String(raw?.date ?? "").trim();
+
+      if (!serviceType && !dateInput && !notes) {
+        return null;
+      }
+
+      if (!serviceType) {
+        throw new Error(`Maintenance appointment ${index + 1} is missing a service category.`);
+      }
+
+      if (!COMMON_SERVICE_TYPES.includes(serviceType as (typeof COMMON_SERVICE_TYPES)[number])) {
+        throw new Error(`Maintenance appointment ${serviceType} is not a supported service category.`);
+      }
+
+      if (!dateInput) {
+        throw new Error(`Maintenance appointment ${index + 1} is missing a date.`);
+      }
+
+      return {
+        appointmentId: Number.isInteger(appointmentId) && appointmentId > 0 ? appointmentId : 0,
+        date: parseIsoDate(dateInput),
+        notes,
+        serviceType
+      };
+    })
+    .filter((appointment): appointment is MaintenanceAppointmentDocument => appointment !== null);
+}
+
+function getMaintenanceAppointments(car: CarDocument) {
+  return Array.isArray(car.maintenanceAppointments) ? car.maintenanceAppointments : [];
+}
+
+function toMaintenanceAppointment(appointment: MaintenanceAppointmentDocument): MaintenanceAppointment {
+  return {
+    appointmentId: appointment.appointmentId,
+    date: formatIsoDate(appointment.date),
+    notes: appointment.notes,
+    serviceType: appointment.serviceType
+  };
+}
+
+function getAppointmentAttentionItems(car: CarDocument): AttentionItem[] {
+  const today = new Date();
+
+  return getMaintenanceAppointments(car)
+    .map((appointment): AttentionItem | null => {
+      const daysUntilDue = signedDaysBetween(today, appointment.date);
+      const isOverdue = daysUntilDue < 0;
+      return {
+        carId: car.carId,
+        carName: `${car.year} ${car.make} ${car.model}`,
+        currentMileage: car.currentMileage,
+        daysUntilDue,
+        lastServiceDate: formatMmDdYy(car.lastServiceDate),
+        milesUntilDue: null,
+        reason: isOverdue
+          ? `${appointment.serviceType} appointment overdue by ${Math.abs(daysUntilDue)} days.`
+          : `${appointment.serviceType} appointment on ${formatMmDdYy(appointment.date)}.`,
+        serviceType: appointment.serviceType,
+        status: isOverdue ? ("overdue" as const) : ("due-soon" as const),
+        type: "appointment" as const
+      };
+    })
+    .filter((item): item is AttentionItem => item !== null);
+}
+
+function signedDaysBetween(start: Date, end: Date) {
+  return Math.floor((startOfUtcDay(end).getTime() - startOfUtcDay(start).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function startOfUtcDay(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 function compareAttentionItems(left: AttentionItem, right: AttentionItem) {

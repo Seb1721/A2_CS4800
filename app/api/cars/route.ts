@@ -29,6 +29,7 @@ export async function POST(request: Request) {
   try {
     const car = await createCar(user.username, {
       imageUrl: String(body?.imageUrl ?? ""),
+      maintenanceAppointments: Array.isArray(body?.maintenanceAppointments) ? body.maintenanceAppointments : [],
       make: String(body?.make ?? ""),
       serviceReminderRules: Array.isArray(body?.serviceReminderRules) ? body.serviceReminderRules : [],
       model: String(body?.model ?? ""),

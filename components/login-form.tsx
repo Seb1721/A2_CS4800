@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { trackEvent } from "@/lib/analytics";
+
 type Mode = "login" | "register";
 
 export function LoginForm() {
@@ -14,6 +16,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordStrength = getPasswordStrength(password);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +45,9 @@ export function LoginForm() {
         throw new Error(serverError || "Authentication failed.");
       }
 
+      trackEvent(mode === "login" ? "login_success" : "sign_up", {
+        identifier_type: username.includes("@") ? "email" : "username"
+      });
       router.push("/");
       router.refresh();
     } catch (submitError) {
@@ -54,25 +60,23 @@ export function LoginForm() {
   return (
     <main className="auth-shell">
       <section className="brand-panel">
-        <div className="eyebrow">Secure Vehicle Records</div>
-        <h1>Professional car tracking, now built for a modern full-stack workflow.</h1>
-        <p>
-          CarKeeper runs on Next.js and MongoDB so your UI, API routes, and deployment path
-          live in one cleaner application.
-        </p>
+        <div className="brand-lockup">
+          <div className="brand-mark">CarKeeper</div>
+          <div className="brand-subheader">Maintenance made easy</div>
+        </div>
 
         <div className="feature-list">
           <div className="feature-item">
-            <strong>Protected account access</strong>
-            <span>Passwords are hashed and sessions are stored in secure HTTP-only cookies.</span>
+            <strong>Clear maintenance view</strong>
+            <span>Track service history, reminders, and mileage in one organized workflow.</span>
           </div>
           <div className="feature-item">
-            <strong>AWS-friendly deployment</strong>
-            <span>Designed for HTTPS hosting on Amplify or another managed Next.js runtime.</span>
+            <strong>Built for everyday use</strong>
+            <span>Open the dashboard, update the record, and move on.</span>
           </div>
           <div className="feature-item">
-            <strong>One codebase</strong>
-            <span>Frontend and backend now share a single React and TypeScript foundation.</span>
+            <strong>Analytics</strong>
+            <span>Trends, costs, and overall garage activity all in one place.</span>
           </div>
         </div>
       </section>
@@ -85,7 +89,7 @@ export function LoginForm() {
               onClick={() => setMode("login")}
               type="button"
             >
-              Log In
+              Sign In
             </button>
             <button
               className={mode === "register" ? "switch-chip active" : "switch-chip"}
@@ -95,13 +99,6 @@ export function LoginForm() {
               Create Account
             </button>
           </div>
-
-          <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
-          <p>
-            {mode === "login"
-              ? "Access your private dashboard to manage vehicles and service records."
-              : "Start with a secure account so each vehicle record stays tied to its owner."}
-          </p>
 
           {error ? <div className="status-card error">{error}</div> : null}
 
@@ -135,7 +132,7 @@ export function LoginForm() {
             ) : null}
 
             <div className="field-group">
-              <label htmlFor="username">Username</label>
+              <label htmlFor="username">{mode === "login" ? "Username/Email" : "Username"}</label>
               <input
                 autoComplete="username"
                 id="username"
@@ -157,13 +154,21 @@ export function LoginForm() {
                 type="password"
                 value={password}
               />
+              {mode === "register" ? (
+                <div className="password-guidance">
+                  <span className={`password-strength password-strength-${passwordStrength.tone}`}>
+                    {passwordStrength.label}
+                  </span>
+                  <span>Use at least 8 characters with uppercase, lowercase, a number, and a symbol.</span>
+                </div>
+              ) : null}
             </div>
 
             <button className="btn btn-primary" disabled={isSubmitting} type="submit">
               {isSubmitting
                 ? "Working..."
                 : mode === "login"
-                  ? "Log In"
+                  ? "Sign In"
                   : "Create Account"}
             </button>
           </form>
@@ -171,4 +176,42 @@ export function LoginForm() {
       </section>
     </main>
   );
+}
+
+function getPasswordStrength(password: string) {
+  if (!password) {
+    return { label: "Use a strong password", tone: "neutral" as const };
+  }
+
+  let score = 0;
+
+  if (password.length >= 8) {
+    score += 1;
+  }
+
+  if (password.length >= 12) {
+    score += 1;
+  }
+
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) {
+    score += 1;
+  }
+
+  if (/\d/.test(password)) {
+    score += 1;
+  }
+
+  if (/[^A-Za-z0-9]/.test(password)) {
+    score += 1;
+  }
+
+  if (score <= 2) {
+    return { label: "Weak password", tone: "weak" as const };
+  }
+
+  if (score === 3 || score === 4) {
+    return { label: "Good password", tone: "good" as const };
+  }
+
+  return { label: "Strong password", tone: "strong" as const };
 }

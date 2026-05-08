@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests/car-insights.test.mjs tests/reporting-core.test.mjs tests/cars-core.test.mjs"
+    "test": "node --test tests/car-insights.test.mjs tests/cars-core.test.mjs"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.4",
     "bcryptjs": "^2.4.3",
     "jose": "^6.1.0",
     "mongodb": "^6.18.0",

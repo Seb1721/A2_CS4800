@@ -1,11 +1,11 @@
 # CarKeeper
 
-CarKeeper is now structured as a full-stack `Next.js` app with:
+CarKeeper is a full-stack `Next.js` app with:
 
 - `Next.js App Router` for frontend pages and backend route handlers
 - `MongoDB` for user accounts, cars, and service history
 - Secure cookie-based login using signed HTTP-only session cookies
-- An AWS-friendly deployment path through `Amplify Hosting`
+- an AWS-friendly deployment path through `EC2` or `Amplify Hosting`
 
 ## Tech Stack
 
@@ -39,7 +39,12 @@ AUTH_SECRET=replace_with_a_long_random_secret
 CARKEEPER_ADMIN_USER=admin
 CARKEEPER_ADMIN_EMAIL=admin@example.com
 CARKEEPER_ADMIN_PASSWORD=replace_with_a_strong_password
+NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+COOKIE_SECURE=true
 ```
+
+`NEXT_PUBLIC_GA_ID` is your Google Analytics 4 measurement ID. Leave it blank to disable analytics for a local environment.
+`COOKIE_SECURE` should stay `true` in normal production. Set it to `false` only for temporary HTTP-only EC2 testing before HTTPS is configured.
 
 Start development:
 
@@ -90,7 +95,13 @@ Sessions are signed with `jose` and stored in an HTTP-only cookie.
 
 ## AWS Deployment
 
-The recommended deployment target for this version is `AWS Amplify Hosting`.
+This app can deploy to either `AWS Amplify Hosting` or `EC2`.
+
+Use `EC2` if you want MongoDB Atlas to allowlist one stable server IP instead of allowing access from anywhere. See [docs/ec2-deployment.md](./docs/ec2-deployment.md).
+
+Use `Amplify Hosting` if you want the simplest managed Next.js deployment and are comfortable with Atlas network access tradeoffs.
+
+The recommended EC2 automation path is a GitHub Actions self-hosted runner on the instance, so you do not need to open SSH access broadly for GitHub-hosted runners.
 
 This repo includes [amplify.yml](./amplify.yml), which uses:
 

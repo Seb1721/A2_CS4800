@@ -1,29 +1,27 @@
-name: Deploy (EC2 nohup)
+name: Deploy (EC2)
 
 on:
   push:
-    branches: [ "carkeeper_webapp_mongodb" ]
+    branches: [ "main", "carkeeper_webapp_next.js" ]
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-carkeeper-webapp-mongodb
+  group: deploy-carkeeper-ec2
   cancel-in-progress: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd ~/A2_CS4800
-            chmod +x run.sh
-            ./run.sh
-            tail -n 50 log.txt
+      - name: Deploy on self-hosted runner
+        env:
+          APP_DIR: ${{ vars.EC2_APP_DIR }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -e
+          APP_DIR="${APP_DIR:-$HOME/app}"
+          cd "$APP_DIR"
+          chmod +x scripts/deploy-ec2.sh
+          APP_DIR="$APP_DIR" DEPLOY_BRANCH="$DEPLOY_BRANCH" bash scripts/deploy-ec2.sh

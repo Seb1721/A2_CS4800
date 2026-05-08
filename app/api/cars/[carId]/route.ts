@@ -45,6 +45,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const car = await updateCarForUser(user.username, Number(carId), {
       allowMileageCorrection: Boolean(body?.allowMileageCorrection),
       imageUrl: String(body?.imageUrl ?? ""),
+      maintenanceAppointments: Array.isArray(body?.maintenanceAppointments) ? body.maintenanceAppointments : [],
       make: String(body?.make ?? ""),
       model: String(body?.model ?? ""),
       mileage: Number(body?.mileage),
