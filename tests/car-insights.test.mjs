@@ -9,15 +9,59 @@ import ts from "typescript";
 
 const insights = await loadInsightsModule();
 
-test("calculateReminderStatus flags vehicles with no service history", () => {
+test("calculateReminderStatus keeps vehicles without service history unflagged", () => {
   const result = insights.calculateReminderStatus({
     currentMileage: 120000,
     latestService: null
   });
 
-  assert.equal(result.needsAttention, true);
-  assert.equal(result.reason, "No service history recorded yet.");
+  assert.equal(result.needsAttention, false);
+  assert.equal(result.reason, null);
   assert.equal(result.nextServiceMileage, null);
+});
+
+test("calculateReminderStatus starts due-soon alerts at half the mileage interval", () => {
+  const early = insights.calculateReminderStatus({
+    currentDate: new Date("2026-05-05T00:00:00.000Z"),
+    currentMileage: 122400,
+    latestService: {
+      date: new Date("2026-04-01T00:00:00.000Z"),
+      mileage: 120000
+    },
+    serviceIntervalDays: 180,
+    serviceIntervalMiles: 5000
+  });
+  const dueSoon = insights.calculateReminderStatus({
+    currentDate: new Date("2026-05-05T00:00:00.000Z"),
+    currentMileage: 122500,
+    latestService: {
+      date: new Date("2026-04-01T00:00:00.000Z"),
+      mileage: 120000
+    },
+    serviceIntervalDays: 180,
+    serviceIntervalMiles: 5000
+  });
+
+  assert.equal(early.needsAttention, false);
+  assert.equal(dueSoon.needsAttention, true);
+  assert.equal(dueSoon.reason, "Service due in 2,500 miles.");
+});
+
+test("calculateCategoryReminderStatuses can use initial mileage as a reminder baseline", () => {
+  const result = insights.calculateCategoryReminderStatuses({
+    baselineService: {
+      date: new Date("2026-01-01T00:00:00.000Z"),
+      mileage: 100000
+    },
+    currentDate: new Date("2026-03-01T00:00:00.000Z"),
+    currentMileage: 105100,
+    rules: [{ intervalDays: 180, intervalMiles: 5000, serviceType: "Oil Change" }],
+    serviceHistory: []
+  });
+
+  assert.equal(result[0].needsAttention, true);
+  assert.equal(result[0].isOverdue, true);
+  assert.equal(result[0].reason, "Oil Change overdue by 100 miles.");
 });
 
 test("calculateReminderStatus reports upcoming mileage-based service", () => {

@@ -26,6 +26,7 @@ import type {
   CategoryExpenseItem,
   DashboardOverview,
   DashboardRecentService,
+  MaintenanceAppointment,
   MileageHistoryItem,
   ServiceReminderRule,
   ServiceHistoryItem,
@@ -60,12 +61,20 @@ type ReminderRuleForm = {
   serviceType: string;
 };
 
+type MaintenanceAppointmentForm = {
+  appointmentId: number;
+  date: string;
+  notes: string;
+  serviceType: string;
+};
+
 type CarFormState = {
   imageUrl: string;
   make: string;
   mileage: string;
   model: string;
   serviceReminderRules: ReminderRuleForm[];
+  maintenanceAppointments: MaintenanceAppointmentForm[];
   year: string;
 };
 
@@ -81,7 +90,8 @@ const emptyCarForm: CarFormState = {
   year: "",
   mileage: "",
   imageUrl: "",
-  serviceReminderRules: []
+  serviceReminderRules: [],
+  maintenanceAppointments: []
 };
 
 const emptyEditCarForm: EditCarFormState = {
@@ -91,6 +101,7 @@ const emptyEditCarForm: EditCarFormState = {
   mileage: "",
   imageUrl: "",
   serviceReminderRules: [],
+  maintenanceAppointments: [],
   allowMileageCorrection: false
 };
 
@@ -256,13 +267,16 @@ export function DashboardClient({
     }
   }, [pathname]);
 
-  function updateCarField(field: keyof CarFormState, value: string | ReminderRuleForm[]) {
+  function updateCarField(
+    field: keyof CarFormState,
+    value: string | ReminderRuleForm[] | MaintenanceAppointmentForm[]
+  ) {
     setCarForm((current) => ({ ...current, [field]: value }));
   }
 
   function updateEditCarField(
     field: keyof EditCarFormState,
-    value: string | boolean | ReminderRuleForm[]
+    value: string | boolean | ReminderRuleForm[] | MaintenanceAppointmentForm[]
   ) {
     setEditCarForm((current) => ({ ...current, [field]: value }));
   }
@@ -311,6 +325,61 @@ export function DashboardClient({
       serviceReminderRules: current.serviceReminderRules.map((rule, ruleIndex) =>
         ruleIndex === index ? { ...rule, [field]: value } : rule
       )
+    }));
+  }
+
+  function updateAppointmentField(
+    mode: "create" | "edit",
+    index: number,
+    field: keyof MaintenanceAppointmentForm,
+    value: string
+  ) {
+    if (mode === "create") {
+      setCarForm((current) => ({
+        ...current,
+        maintenanceAppointments: current.maintenanceAppointments.map((appointment, appointmentIndex) =>
+          appointmentIndex === index ? { ...appointment, [field]: value } : appointment
+        )
+      }));
+      return;
+    }
+
+    setEditCarForm((current) => ({
+      ...current,
+      maintenanceAppointments: current.maintenanceAppointments.map((appointment, appointmentIndex) =>
+        appointmentIndex === index ? { ...appointment, [field]: value } : appointment
+      )
+    }));
+  }
+
+  function addAppointment(mode: "create" | "edit") {
+    const appointment = createAppointmentForm();
+    if (mode === "create") {
+      setCarForm((current) => ({
+        ...current,
+        maintenanceAppointments: [...current.maintenanceAppointments, appointment]
+      }));
+      return;
+    }
+
+    setEditCarForm((current) => ({
+      ...current,
+      maintenanceAppointments: [...current.maintenanceAppointments, appointment]
+    }));
+  }
+
+  function removeAppointment(mode: "create" | "edit", index: number) {
+    if (mode === "create") {
+      setCarForm((current) => ({
+        ...current,
+        maintenanceAppointments: current.maintenanceAppointments.filter((_, appointmentIndex) => appointmentIndex !== index)
+      }));
+      return;
+    }
+
+    setEditCarForm((current) => ({
+      ...current,
+      maintenanceAppointments: current.maintenanceAppointments.filter((_, appointmentIndex) => appointmentIndex !== index)
     }));
   }
 
@@ -373,6 +442,7 @@ export function DashboardClient({
       make: car.make,
       mileage: String(car.currentMileage),
       model: car.model,
+      maintenanceAppointments: car.maintenanceAppointments.map(toAppointmentForm),
       serviceReminderRules: car.serviceReminderRules.map(toReminderRuleForm),
       year: String(car.year)
     });
@@ -486,6 +556,7 @@ export function DashboardClient({
         body: JSON.stringify({
           imageUrl: carForm.imageUrl,
           make: carForm.make,
+          maintenanceAppointments: serializeAppointmentForms(carForm.maintenanceAppointments),
           mileage: Number(carForm.mileage),
           model: carForm.model,
           serviceReminderRules: serializeReminderRuleForms(carForm.serviceReminderRules),
@@ -536,6 +607,7 @@ export function DashboardClient({
           allowMileageCorrection: editCarForm.allowMileageCorrection,
           imageUrl: editCarForm.imageUrl,
           make: editCarForm.make,
+          maintenanceAppointments: serializeAppointmentForms(editCarForm.maintenanceAppointments),
           mileage: Number(editCarForm.mileage),
           model: editCarForm.model,
           serviceReminderRules: serializeReminderRuleForms(editCarForm.serviceReminderRules),
@@ -1037,8 +1109,11 @@ export function DashboardClient({
         <VehicleCreateView
           carForm={carForm}
           handleAddCar={handleAddCar}
+          onAddAppointment={addAppointment}
           onAddRule={addReminderRule}
+          onRemoveAppointment={removeAppointment}
           onRemoveRule={removeReminderRule}
+          onUpdateAppointment={updateAppointmentField}
           onUpdateCarField={updateCarField}
           onUpdateRule={updateReminderRuleField}
         />
@@ -1100,7 +1175,10 @@ export function DashboardClient({
           updateMileageField={updateMileageField}
           updateServiceField={updateServiceField}
           onAddRule={addReminderRule}
+          onAddAppointment={addAppointment}
+          onRemoveAppointment={removeAppointment}
           onRemoveRule={removeReminderRule}
+          onUpdateAppointment={updateAppointmentField}
           onUpdateRule={updateReminderRuleField}
         />
       ) : null}
@@ -1147,15 +1225,25 @@ function DashboardHomeView({
   overview: DashboardOverview;
   recentServices: DashboardRecentService[];
 }) {
+  const [watchPages, setWatchPages] = useState<Record<number, number>>({});
+  const [maintenanceOverviewPage, setMaintenanceOverviewPage] = useState(0);
+  const watchGroups = groupAttentionItems(attentionItems);
+  const flaggedVehicleNames = watchGroups.map((group) => group.carName);
+
   return (
     <div className="content-stack">
-      <section className="overview-grid compact-shell">
+      <section className="overview-grid dashboard-overview-grid compact-shell">
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
         <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
-        <OverviewCard label="Lifetime Expenses" value={formatCurrency(overview.totalExpenses)} />
-        <OverviewCard label="Overdue" value={String(overview.overdueCount)} />
-        <OverviewCard label="Due Soon" value={String(overview.dueSoonCount)} />
-        <OverviewCard label="Flagged Vehicles" value={String(overview.flaggedVehicleCount)} />
+        <OverviewCard label="Total Expenses" value={formatCurrency(overview.totalExpenses)} />
+        <MaintenanceOverviewCard
+          currentPage={maintenanceOverviewPage}
+          dueSoonCount={overview.dueSoonCount}
+          flaggedVehicleNames={flaggedVehicleNames}
+          helperText="Due Soon triggers when mileage reaches half of the service interval."
+          onPageChange={setMaintenanceOverviewPage}
+          overdueCount={overview.overdueCount}
+        />
       </section>
 
       <section className="fleet-highlights">
@@ -1169,7 +1257,7 @@ function DashboardHomeView({
           title={fleetHighlights.highestMileageVehicle?.carName ?? "No vehicle available"}
         />
         <HighlightCard
-          label="Highest Spend"
+          label="Most Expensive"
           subtitle={
             fleetHighlights.highestSpendVehicle
               ? formatCurrency(fleetHighlights.highestSpendVehicle.lifetimeExpenses)
@@ -1193,7 +1281,7 @@ function DashboardHomeView({
           <div className="workspace-panel-header">
             <div>
               <h2>Garage</h2>
-              <p>Fleet snapshot.</p>
+              <p>Fleet snapshot</p>
             </div>
             <Link className="section-link" href="/garage">
               Open Garage
@@ -1229,29 +1317,80 @@ function DashboardHomeView({
             <div className="workspace-panel-header">
               <div>
                 <h2>Maintenance Watch</h2>
-                <p>Priority service signals.</p>
+                <p>Priority service signals</p>
               </div>
             </div>
             {attentionItems.length === 0 ? (
-              <div className="empty-inline">No maintenance alerts.</div>
+              <div className="empty-inline">No maintenance alerts</div>
             ) : (
               <div className="watch-preview-list">
-                {[...overdueAttentionItems, ...dueSoonAttentionItems].slice(0, 6).map((item) => (
-                  <button
-                    className="preview-row"
-                    key={`${item.carId}-${item.serviceType}`}
-                    onClick={() => openVehiclePage(item.carId)}
-                    type="button"
-                  >
-                    <span className="preview-row-stack">
-                      <span className="preview-main">{item.carName}</span>
-                      <span className="preview-sub">{item.serviceType}</span>
-                    </span>
-                    <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
-                      {item.status === "overdue" ? "Overdue" : "Due Soon"}
-                    </span>
-                  </button>
-                ))}
+                {watchGroups.map((group) => {
+                  const pageSize = 3;
+                  const pageCount = Math.max(1, Math.ceil(group.items.length / pageSize));
+                  const currentPage = Math.min(watchPages[group.carId] ?? 0, pageCount - 1);
+                  const visibleItems = group.items.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+
+                  return (
+                    <div className="watch-group-card" key={group.carId}>
+                      <div className="watch-group-title">
+                        <button className="comparison-link" onClick={() => openVehiclePage(group.carId)} type="button">
+                          {group.carName}
+                        </button>
+                        {pageCount > 1 ? (
+                          <div className="section-pager">
+                            <button
+                              className="btn btn-inline"
+                              disabled={currentPage === 0}
+                              onClick={() =>
+                                setWatchPages((current) => ({
+                                  ...current,
+                                  [group.carId]: Math.max(0, currentPage - 1)
+                                }))
+                              }
+                              type="button"
+                            >
+                              Prev
+                            </button>
+                            <span className="section-pager-label">
+                              {currentPage + 1} / {pageCount}
+                            </span>
+                            <button
+                              className="btn btn-inline"
+                              disabled={currentPage >= pageCount - 1}
+                              onClick={() =>
+                                setWatchPages((current) => ({
+                                  ...current,
+                                  [group.carId]: Math.min(pageCount - 1, currentPage + 1)
+                                }))
+                              }
+                              type="button"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="watch-group-items">
+                        {visibleItems.map((item) => (
+                          <button
+                            className="preview-row"
+                            key={`${item.carId}-${item.type}-${item.serviceType}-${item.reason}`}
+                            onClick={() => openVehiclePage(item.carId)}
+                            type="button"
+                          >
+                            <span className="preview-row-stack">
+                              <span className="preview-main">{item.serviceType}</span>
+                              <span className="preview-sub">{item.reason}</span>
+                            </span>
+                            <span className={`comparison-status ${item.status === "overdue" ? "warning" : "due-soon"}`}>
+                              {item.status === "overdue" ? "Overdue" : item.type === "appointment" ? "Scheduled" : "Due Soon"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1260,14 +1399,14 @@ function DashboardHomeView({
             <div className="workspace-panel-header">
               <div>
                 <h2>Recent Service</h2>
-                <p>Latest maintenance activity.</p>
+                <p>Latest maintenance activity</p>
               </div>
               <Link className="section-link" href="/services">
                 Open Analytics
               </Link>
             </div>
             {recentServices.length === 0 ? (
-              <div className="empty-inline">No service activity yet.</div>
+              <div className="empty-inline">No service activity yet</div>
             ) : (
               <div className="preview-list">
                 {recentServices.slice(0, 6).map((service) => (
@@ -1308,7 +1447,7 @@ function GarageIndexView({
 }) {
   return (
     <div className="content-stack">
-      <section className="overview-grid compact-shell">
+      <section className="overview-grid garage-overview-grid compact-shell">
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
         <OverviewCard
           label="Average Mileage"
@@ -1325,7 +1464,7 @@ function GarageIndexView({
         <div className="workspace-panel-header">
           <div>
             <h2>All Vehicles</h2>
-            <p>Vehicle records, service status, and insights.</p>
+            <p>Vehicle records, service status, and insights</p>
           </div>
         </div>
         {cars.length === 0 ? (
@@ -1375,16 +1514,30 @@ function GarageIndexView({
 function VehicleCreateView({
   carForm,
   handleAddCar,
+  onAddAppointment,
   onAddRule,
+  onRemoveAppointment,
   onRemoveRule,
+  onUpdateAppointment,
   onUpdateCarField,
   onUpdateRule
 }: {
   carForm: CarFormState;
   handleAddCar: (event: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  onAddAppointment: (mode: "create" | "edit") => void;
   onAddRule: (mode: "create" | "edit") => void;
+  onRemoveAppointment: (mode: "create" | "edit", index: number) => void;
   onRemoveRule: (mode: "create" | "edit", index: number) => void;
-  onUpdateCarField: (field: keyof CarFormState, value: string | ReminderRuleForm[]) => void;
+  onUpdateAppointment: (
+    mode: "create" | "edit",
+    index: number,
+    field: keyof MaintenanceAppointmentForm,
+    value: string
+  ) => void;
+  onUpdateCarField: (
+    field: keyof CarFormState,
+    value: string | ReminderRuleForm[] | MaintenanceAppointmentForm[]
+  ) => void;
   onUpdateRule: (
     mode: "create" | "edit",
     index: number,
@@ -1397,7 +1550,7 @@ function VehicleCreateView({
       <div className="workspace-panel-header">
         <div>
           <h2>New Vehicle</h2>
-          <p>Core vehicle profile.</p>
+          <p>Core vehicle profile</p>
         </div>
       </div>
 
@@ -1451,7 +1604,10 @@ function VehicleCreateView({
         </div>
 
         <div className="field-group">
-          <label htmlFor="imageUrl">Image URL</label>
+          <div className="detail-section-heading field-subheading">
+            <label htmlFor="imageUrl">Image URL</label>
+            <p>Optional</p>
+          </div>
           <input
             id="imageUrl"
             onChange={(event) => onUpdateCarField("imageUrl", event.target.value)}
@@ -1466,6 +1622,14 @@ function VehicleCreateView({
           onRemoveRule={onRemoveRule}
           onUpdateRule={onUpdateRule}
           rules={carForm.serviceReminderRules}
+        />
+
+        <AppointmentEditor
+          appointments={carForm.maintenanceAppointments}
+          mode="create"
+          onAddAppointment={onAddAppointment}
+          onRemoveAppointment={onRemoveAppointment}
+          onUpdateAppointment={onUpdateAppointment}
         />
 
         <div className="action-row">
@@ -1508,7 +1672,7 @@ function AnalyticsIndexView({
       <section className="overview-grid compact-shell">
         <OverviewCard label="Vehicles" value={String(overview.totalVehicles)} />
         <OverviewCard label="Service Records" value={String(overview.totalServiceRecords)} />
-        <OverviewCard label="Total Spend" value={formatCurrency(overview.totalExpenses)} />
+        <OverviewCard label="Total Spent" value={formatCurrency(overview.totalExpenses)} />
         <OverviewCard label="Avg Service Cost" value={formatCurrency(overview.averageServiceCost)} />
       </section>
 
@@ -1517,7 +1681,7 @@ function AnalyticsIndexView({
           <div className="workspace-panel-header">
             <div>
               <h2>Cost Summary</h2>
-              <p>Fleet service spend.</p>
+              <p>Fleet service spending</p>
             </div>
           </div>
           <div className="detail-list">
@@ -1544,7 +1708,7 @@ function AnalyticsIndexView({
           <div className="workspace-panel-header">
             <div>
               <h2>Highest Cost Vehicles</h2>
-              <p>Vehicles with the highest recorded spend.</p>
+              <p>Vehicles with the highest recorded cost</p>
             </div>
           </div>
           {topCostVehicles.length === 0 ? (
@@ -1572,11 +1736,11 @@ function AnalyticsIndexView({
         <div className="workspace-panel-header">
           <div>
             <h2>Recent Activity</h2>
-            <p>Latest service events across the fleet.</p>
+            <p>Latest service events across the fleet</p>
           </div>
         </div>
         {recentServices.length === 0 ? (
-          <div className="empty-inline">No service records yet.</div>
+          <div className="empty-inline">No service records yet</div>
         ) : (
           <div className="preview-list">
             {recentServices.slice(0, 10).map((service) => (
@@ -1621,7 +1785,7 @@ function AccountWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Profile</h2>
-            <p>Workspace identity.</p>
+            <p>Workspace identity</p>
           </div>
         </div>
         <form className="form-grid" onSubmit={handleSaveProfile}>
@@ -1657,7 +1821,7 @@ function AccountWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Account</h2>
-            <p>Account reference.</p>
+            <p>Account reference</p>
           </div>
         </div>
         <dl className="detail-list">
@@ -1714,7 +1878,10 @@ function VehicleWorkspaceView({
   mileageForm,
   openVehicleInsightsPage,
   onAddRule,
+  onAddAppointment,
+  onRemoveAppointment,
   onRemoveRule,
+  onUpdateAppointment,
   onUpdateRule,
   serviceForm,
   startEditingMileageEntry,
@@ -1750,8 +1917,16 @@ function VehicleWorkspaceView({
   isSavingVehicle: boolean;
   mileageForm: typeof emptyMileageForm;
   openVehicleInsightsPage: (carId: number) => void;
+  onAddAppointment: (mode: "create" | "edit") => void;
   onAddRule: (mode: "create" | "edit") => void;
+  onRemoveAppointment: (mode: "create" | "edit", index: number) => void;
   onRemoveRule: (mode: "create" | "edit", index: number) => void;
+  onUpdateAppointment: (
+    mode: "create" | "edit",
+    index: number,
+    field: keyof MaintenanceAppointmentForm,
+    value: string
+  ) => void;
   onUpdateRule: (
     mode: "create" | "edit",
     index: number,
@@ -1763,7 +1938,7 @@ function VehicleWorkspaceView({
   startEditingService: (service: ServiceHistoryItem) => void;
   updateEditCarField: (
     field: keyof EditCarFormState,
-    value: string | boolean | ReminderRuleForm[]
+    value: string | boolean | ReminderRuleForm[] | MaintenanceAppointmentForm[]
   ) => void;
   updateEditMileageEntryField: (
     field: keyof typeof emptyEditMileageEntryForm,
@@ -1784,7 +1959,7 @@ function VehicleWorkspaceView({
   if (!car) {
     return (
       <section className="workspace-panel">
-        <div className="empty-inline">Vehicle not found.</div>
+        <div className="empty-inline">Vehicle not found</div>
       </section>
     );
   }
@@ -1810,7 +1985,7 @@ function VehicleWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>{car.carName}</h2>
-            <p>Service operations and mileage tracking.</p>
+            <p>Service operations and mileage tracking</p>
           </div>
           <button className="btn btn-secondary" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
             View Trends and Timeline
@@ -1828,7 +2003,7 @@ function VehicleWorkspaceView({
             ))}
           </div>
         ) : (
-          <div className="empty-inline">No mileage-based reminders configured.</div>
+          <div className="empty-inline">No mileage-based reminders configured</div>
         )}
       </section>
 
@@ -1978,7 +2153,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Service History</h2>
-              <p>Maintenance ledger.</p>
+              <p>Maintenance ledger</p>
             </div>
             {car.serviceHistory.length > serviceHistoryPageSize ? (
               <div className="section-pager">
@@ -2007,7 +2182,7 @@ function VehicleWorkspaceView({
             ) : null}
           </div>
           {car.serviceHistory.length === 0 ? (
-            <div className="empty-inline">No service records yet.</div>
+            <div className="empty-inline">No service records yet</div>
           ) : (
             <table className="workspace-table">
               <thead>
@@ -2133,7 +2308,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Mileage Log</h2>
-              <p>Odometer history.</p>
+              <p>Odometer history</p>
             </div>
           </div>
           <table className="workspace-table">
@@ -2234,7 +2409,7 @@ function VehicleWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Vehicle Settings</h2>
-            <p>Profile and reminder configuration.</p>
+            <p>Profile and reminder configuration</p>
           </div>
           <button
             className="btn btn-secondary"
@@ -2295,7 +2470,10 @@ function VehicleWorkspaceView({
             </div>
 
             <div className="field-group">
-              <label htmlFor="editImageUrl">Image URL</label>
+              <div className="detail-section-heading field-subheading">
+                <label htmlFor="editImageUrl">Image URL</label>
+                <p>Optional</p>
+              </div>
               <input
                 id="editImageUrl"
                 onChange={(event) => updateEditCarField("imageUrl", event.target.value)}
@@ -2310,6 +2488,14 @@ function VehicleWorkspaceView({
               onRemoveRule={onRemoveRule}
               onUpdateRule={onUpdateRule}
               rules={editCarForm.serviceReminderRules}
+            />
+
+            <AppointmentEditor
+              appointments={editCarForm.maintenanceAppointments}
+              mode="edit"
+              onAddAppointment={onAddAppointment}
+              onRemoveAppointment={onRemoveAppointment}
+              onUpdateAppointment={onUpdateAppointment}
             />
 
             <label className="checkbox-row">
@@ -2336,7 +2522,7 @@ function VehicleWorkspaceView({
             </div>
           </form>
         ) : (
-          <div className="empty-inline">Settings are collapsed.</div>
+          <div className="empty-inline">Settings are collapsed</div>
         )}
       </section>
     </div>
@@ -2379,7 +2565,7 @@ function VehicleInsightsView({
   if (!car) {
     return (
       <section className="workspace-panel">
-        <div className="empty-inline">Vehicle not found.</div>
+        <div className="empty-inline">Vehicle not found</div>
       </section>
     );
   }
@@ -2464,7 +2650,7 @@ function VehicleInsightsView({
         <div className="workspace-panel-header">
           <div>
             <h2>Expense by Category</h2>
-            <p>Spend distribution by service type.</p>
+            <p>Spend distribution by service type</p>
           </div>
         </div>
         {trendCategoryExpenses.length === 0 ? (
@@ -2482,7 +2668,7 @@ function VehicleInsightsView({
         <div className="workspace-panel-header">
           <div>
             <h2>Mileage Timeline</h2>
-            <p>Chronological odometer activity.</p>
+            <p>Chronological odometer activity</p>
           </div>
         </div>
         <div className="timeline-list">
@@ -2538,7 +2724,7 @@ function getPageMeta(view: DashboardView, selectedCar: CarDetails | null) {
     default:
       return {
         title: "Dashboard",
-        description: "A focused view of fleet health, spend, and recent activity."
+        description: "Fleet health, expenses, and recent activity"
       };
   }
 }
@@ -2583,7 +2769,7 @@ function ReminderRuleEditor({
 
       {rules.length === 0 ? (
         <div className="service-card">
-          <div className="service-notes muted-text">No reminder intervals configured.</div>
+          <div className="service-notes muted-text">No reminder intervals configured</div>
         </div>
       ) : (
         <div className="reminder-editor-list">
@@ -2688,6 +2874,92 @@ function __REMOVE_ReminderWatchGroup() {
     </div>
   );
   */
+}
+
+function AppointmentEditor({
+  appointments,
+  mode,
+  onAddAppointment,
+  onRemoveAppointment,
+  onUpdateAppointment
+}: {
+  appointments: MaintenanceAppointmentForm[];
+  mode: "create" | "edit";
+  onAddAppointment: (mode: "create" | "edit") => void;
+  onRemoveAppointment: (mode: "create" | "edit", index: number) => void;
+  onUpdateAppointment: (
+    mode: "create" | "edit",
+    index: number,
+    field: keyof MaintenanceAppointmentForm,
+    value: string
+  ) => void;
+}) {
+  const prefix = mode === "create" ? "create" : "edit";
+
+  return (
+    <div className="field-group">
+      <div className="detail-section-heading reminder-editor-heading">
+        <div>
+          <label>Maintenance Appointments</label>
+          <p>Schedule upcoming service dates.</p>
+        </div>
+        <button className="btn btn-inline" onClick={() => onAddAppointment(mode)} type="button">
+          Add Appointment
+        </button>
+      </div>
+
+      {appointments.length === 0 ? (
+        <div className="service-card">
+          <div className="service-notes muted-text">No appointments scheduled</div>
+        </div>
+      ) : (
+        <div className="reminder-editor-list">
+          {appointments.map((appointment, index) => (
+            <div className="reminder-editor-card" key={`${mode}-appointment-${appointment.appointmentId}-${index}`}>
+              <div className="field-row">
+                <div className="field-group">
+                  <label htmlFor={`${prefix}AppointmentType-${index}`}>Service Category</label>
+                  <select
+                    id={`${prefix}AppointmentType-${index}`}
+                    onChange={(event) => onUpdateAppointment(mode, index, "serviceType", event.target.value)}
+                    value={appointment.serviceType}
+                  >
+                    {serviceTypes.map((serviceType) => (
+                      <option key={serviceType} value={serviceType}>
+                        {serviceType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label htmlFor={`${prefix}AppointmentDate-${index}`}>Appointment Date</label>
+                  <input
+                    id={`${prefix}AppointmentDate-${index}`}
+                    onChange={(event) => onUpdateAppointment(mode, index, "date", event.target.value)}
+                    required
+                    type="date"
+                    value={appointment.date}
+                  />
+                </div>
+              </div>
+              <div className="field-group">
+                <label htmlFor={`${prefix}AppointmentNotes-${index}`}>Notes</label>
+                <input
+                  id={`${prefix}AppointmentNotes-${index}`}
+                  onChange={(event) => onUpdateAppointment(mode, index, "notes", event.target.value)}
+                  type="text"
+                  value={appointment.notes}
+                />
+              </div>
+              <button className="btn btn-inline-danger" onClick={() => onRemoveAppointment(mode, index)} type="button">
+                Remove Appointment
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ReminderStatusCard({
@@ -2847,11 +3119,105 @@ function CategoryExpenseCard({ item }: { item: CategoryExpenseItem }) {
   );
 }
 
-function OverviewCard({ label, value }: { label: string; value: string }) {
+function OverviewCard({
+  helperText,
+  label,
+  meta,
+  value
+}: {
+  helperText?: string;
+  label: string;
+  meta?: string;
+  value: string;
+}) {
   return (
     <div className="overview-card">
-      <div className="overview-label">{label}</div>
+      <div className="overview-label">
+        {label}
+        {helperText ? (
+          <span className="info-tooltip" tabIndex={0}>
+            i
+            <span className="info-tooltip-text">{helperText}</span>
+          </span>
+        ) : null}
+      </div>
       <div className="overview-value">{value}</div>
+      {meta ? <div className="overview-meta">{meta}</div> : null}
+    </div>
+  );
+}
+
+function MaintenanceOverviewCard({
+  currentPage,
+  dueSoonCount,
+  flaggedVehicleNames,
+  helperText,
+  onPageChange,
+  overdueCount
+}: {
+  currentPage: number;
+  dueSoonCount: number;
+  flaggedVehicleNames: string[];
+  helperText: string;
+  onPageChange: (page: number) => void;
+  overdueCount: number;
+}) {
+  const pageSize = 3;
+  const pageCount = Math.max(1, Math.ceil(flaggedVehicleNames.length / pageSize));
+  const activePage = Math.min(currentPage, pageCount - 1);
+  const visibleVehicles = flaggedVehicleNames.slice(activePage * pageSize, activePage * pageSize + pageSize);
+  const vehicleLabel = flaggedVehicleNames.length === 1 ? "vehicle" : "vehicles";
+
+  return (
+    <div className="overview-card">
+      <div className="overview-label">
+        Maintenance Watch
+        <span className="info-tooltip" tabIndex={0}>
+          i
+          <span className="info-tooltip-text">{helperText}</span>
+        </span>
+      </div>
+      {flaggedVehicleNames.length === 0 ? (
+        <>
+          <div className="overview-value">Service up to date</div>
+          <div className="overview-meta">All vehicles are current</div>
+        </>
+      ) : (
+        <>
+          <div className="overview-value">
+            {flaggedVehicleNames.length} {vehicleLabel}
+          </div>
+          <div className="overview-vehicle-list">
+            {visibleVehicles.map((vehicleName) => (
+              <span className="overview-vehicle-pill" key={vehicleName}>
+                {vehicleName}
+              </span>
+            ))}
+          </div>
+          <div className="overview-meta">{dueSoonCount} due soon / {overdueCount} overdue</div>
+          {pageCount > 1 ? (
+            <div className="overview-pager">
+              <button
+                className="btn btn-inline"
+                disabled={activePage === 0}
+                onClick={() => onPageChange(Math.max(0, activePage - 1))}
+                type="button"
+              >
+                Prev
+              </button>
+              <span className="section-pager-label">{activePage + 1} / {pageCount}</span>
+              <button
+                className="btn btn-inline"
+                disabled={activePage >= pageCount - 1}
+                onClick={() => onPageChange(Math.min(pageCount - 1, activePage + 1))}
+                type="button"
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -2894,6 +3260,15 @@ function createReminderRuleForm(existingRules: ReminderRuleForm[] = []): Reminde
   };
 }
 
+function createAppointmentForm(): MaintenanceAppointmentForm {
+  return {
+    appointmentId: 0,
+    date: todayIso(),
+    notes: "",
+    serviceType: serviceTypes[0]
+  };
+}
+
 function toReminderRuleForm(rule: ServiceReminderRule): ReminderRuleForm {
   return {
     intervalDays: String(rule.intervalDays),
@@ -2908,6 +3283,39 @@ function serializeReminderRuleForms(rules: ReminderRuleForm[]): ServiceReminderR
     intervalMiles: Number(rule.intervalMiles),
     serviceType: rule.serviceType
   }));
+}
+
+function toAppointmentForm(appointment: MaintenanceAppointment): MaintenanceAppointmentForm {
+  return {
+    appointmentId: appointment.appointmentId,
+    date: appointment.date,
+    notes: appointment.notes,
+    serviceType: appointment.serviceType
+  };
+}
+
+function serializeAppointmentForms(appointments: MaintenanceAppointmentForm[]): MaintenanceAppointment[] {
+  return appointments.map((appointment) => ({
+    appointmentId: appointment.appointmentId,
+    date: appointment.date,
+    notes: appointment.notes,
+    serviceType: appointment.serviceType
+  }));
+}
+
+function groupAttentionItems(items: AttentionItem[]) {
+  const groups = new Map<number, { carId: number; carName: string; items: AttentionItem[] }>();
+
+  for (const item of items) {
+    const current = groups.get(item.carId);
+    if (current) {
+      current.items.push(item);
+    } else {
+      groups.set(item.carId, { carId: item.carId, carName: item.carName, items: [item] });
+    }
+  }
+
+  return [...groups.values()];
 }
 
 function formatDateForServiceApi(value: string) {

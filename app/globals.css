@@ -187,7 +187,7 @@ textarea {
   border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 16px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
   width: 100%;
 }
@@ -430,6 +430,14 @@ textarea {
   margin-bottom: 24px;
 }
 
+.dashboard-overview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.garage-overview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .comparison-card {
   margin-bottom: 24px;
 }
@@ -567,12 +575,60 @@ textarea {
 }
 
 .overview-label {
+  align-items: center;
   color: #455867;
+  display: flex;
   font-size: 12px;
   font-weight: 700;
+  gap: 6px;
   letter-spacing: 0.08em;
   margin-bottom: 8px;
   text-transform: uppercase;
+}
+
+.info-tooltip {
+  align-items: center;
+  background: #fffaf3;
+  border: 1px solid #c8b7a3;
+  border-radius: 999px;
+  color: #203545;
+  cursor: help;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  height: 16px;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  position: relative;
+  text-transform: none;
+  width: 16px;
+}
+
+.info-tooltip-text {
+  background: #203545;
+  border-radius: var(--radius-sm);
+  bottom: calc(100% + 8px);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  left: 50%;
+  letter-spacing: 0;
+  line-height: 1.35;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: absolute;
+  text-transform: none;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease;
+  width: 230px;
+  z-index: 5;
+}
+
+.info-tooltip:hover .info-tooltip-text,
+.info-tooltip:focus .info-tooltip-text {
+  opacity: 1;
 }
 
 .overview-value {
@@ -580,6 +636,34 @@ textarea {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.03em;
+}
+
+.overview-meta {
+  color: #455867;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.overview-vehicle-list {
+  color: #172431;
+  display: grid;
+  font-size: 18px;
+  font-weight: 800;
+  gap: 4px;
+  line-height: 1.3;
+  margin-top: 8px;
+}
+
+.overview-vehicle-pill {
+  display: block;
+}
+
+.overview-pager {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .hero {
@@ -1085,6 +1169,10 @@ textarea {
 
 .detail-section-heading {
   margin-bottom: 14px;
+}
+
+.field-subheading {
+  margin-bottom: 6px;
 }
 
 .detail-section h3 {
@@ -1686,12 +1774,19 @@ textarea {
 
 .dashboard-panels {
   align-items: start;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.95fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-garage-panel,
+.dashboard-watch-panel,
+.dashboard-service-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 260px;
 }
 
 .dashboard-side-stack {
-  display: grid;
-  gap: 14px;
+  display: contents;
 }
 
 .records-grid {
@@ -1897,7 +1992,7 @@ textarea {
 .garage-card-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .garage-card {
@@ -1906,7 +2001,9 @@ textarea {
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 24px rgba(13, 23, 31, 0.1);
   display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: 14px;
+  min-height: 180px;
   padding: 16px;
   position: relative;
 }
@@ -1948,6 +2045,7 @@ textarea {
 }
 
 .garage-card-actions {
+  align-self: end;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1958,6 +2056,12 @@ textarea {
   gap: 10px;
 }
 
+.dashboard-garage-list,
+.watch-preview-list,
+.dashboard-service-panel .preview-list {
+  align-content: start;
+}
+
 .dashboard-garage-row {
   min-height: 76px;
 }
@@ -1965,6 +2069,27 @@ textarea {
 .dashboard-watch-panel .preview-row,
 .dashboard-service-panel .preview-row {
   min-height: 70px;
+}
+
+.watch-group-card {
+  background: rgba(255, 250, 243, 0.76);
+  border: 1px solid #d3c2ad;
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.watch-group-title {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.watch-group-items {
+  display: grid;
+  gap: 8px;
 }
 
 .analytics-grid {
@@ -1996,7 +2121,8 @@ textarea {
   .workspace-header,
   .two-column-shell,
   .dashboard-panels,
-  .records-grid {
+  .records-grid,
+  .garage-card-grid {
     grid-template-columns: 1fr;
   }
 
