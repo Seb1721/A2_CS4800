@@ -83,6 +83,8 @@ export function LoginForm() {
 
       <section className="auth-panel">
         <div className="auth-card">
+          <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
+
           <div className="auth-switch">
             <button
               className={mode === "login" ? "switch-chip active" : "switch-chip"}
@@ -99,8 +101,6 @@ export function LoginForm() {
               Create Account
             </button>
           </div>
-
-          <h2>{mode === "login" ? "Sign in to CarKeeper" : "Create your CarKeeper account"}</h2>
 
           {error ? <div className="status-card error">{error}</div> : null}
 
