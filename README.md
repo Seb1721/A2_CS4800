@@ -62,6 +62,10 @@ MongoDB collections:
 
 Vehicle data is scoped by `ownerUsername`, so each account only sees its own records.
 
+## Analytics
+
+Vehicle insights and fleet analytics are calculated from current service and mileage records. Historical service entries are supported, and graphs recalculate from the latest saved records. Graphs show cumulative miles added and total spending over the selected window, with manual window changes applied through the `Apply Window` action and presets applied immediately.
+
 ## Deployment
 
 The app can deploy to AWS Amplify Hosting or a Node-capable server such as EC2. Required production environment variables match `.env.example`; use HTTPS with `COOKIE_SECURE=true`.

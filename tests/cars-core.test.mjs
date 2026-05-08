@@ -148,6 +148,36 @@ test("service-linked mileage entries cannot be edited or deleted directly", asyn
   );
 });
 
+test("addServiceToCar accepts historical service mileage without lowering current mileage", async () => {
+  const db = createMockDatabase();
+  harness.setMockDatabase(db);
+
+  const car = await harness.cars.createCar("driver", {
+    imageUrl: "",
+    make: "Honda",
+    mileage: 90000,
+    model: "Accord",
+    serviceReminderRules: [],
+    year: 2016
+  });
+
+  const result = await harness.cars.addServiceToCar("driver", {
+    carId: car.carId,
+    cost: 75,
+    description: "",
+    mileage: 85000,
+    notes: "",
+    serviceDate: "02/01/26",
+    serviceType: "Oil Change"
+  });
+
+  assert.equal(result.currentMileage, 90000);
+  assert.equal(result.lastServiceDate, "02/01/26");
+  assert.equal(result.lifetimeExpenses, 75);
+  assert.equal(result.serviceHistory[0].mileage, 85000);
+  assert.ok(result.mileageHistory.some((entry) => entry.linkedServiceId === result.serviceHistory[0].serviceId));
+});
+
 test("updateServiceForCar rejects invalid service dates", async () => {
   const db = createMockDatabase();
   harness.setMockDatabase(db);

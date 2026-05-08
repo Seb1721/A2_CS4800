@@ -2413,16 +2413,21 @@ function VehicleWorkspaceView({
                 />
               </div>
               <div className="field-group">
-                <label htmlFor="serviceMileage">Mileage at Service</label>
+                <label className="label-with-tooltip" htmlFor="serviceMileage">
+                  Mileage at Service
+                  <span className="info-tooltip" tabIndex={0}>
+                    i
+                    <span className="info-tooltip-text">Past lower mileage updates the car's history.</span>
+                  </span>
+                </label>
                 <input
                   id="serviceMileage"
-                  min={car.currentMileage}
+                  min="0"
                   onChange={(event) => updateServiceField("mileage", event.target.value)}
                   required
                   type="number"
                   value={serviceForm.mileage}
                 />
-                <div className="field-hint">Current mileage is the default minimum.</div>
               </div>
             </div>
             <div className="field-row">
@@ -3516,22 +3521,23 @@ function TimeSeriesChart({
         <div className="line-chart">
           <div className="line-chart-y-title">{yAxisLabel}</div>
           <svg aria-label={label} preserveAspectRatio="none" role="img" viewBox="0 0 640 260">
-            <line className="line-chart-grid" x1="44" x2="610" y1="34" y2="34" />
-            <line className="line-chart-grid" x1="44" x2="610" y1="128" y2="128" />
-            <line className="line-chart-grid" x1="44" x2="610" y1="222" y2="222" />
-            <line className="line-chart-axis" x1="44" x2="44" y1="26" y2="222" />
-            <line className="line-chart-axis" x1="44" x2="610" y1="222" y2="222" />
+            {chart.ticks.map((tick) => (
+              <g key={tick.value}>
+                <line className="line-chart-grid" x1={chart.left} x2={chart.right} y1={tick.y} y2={tick.y} />
+                <text className="line-chart-tick-label" x={chart.left - 10} y={tick.y + 4}>
+                  {formatTrendValue(tick.value, prefix, suffix)}
+                </text>
+              </g>
+            ))}
+            <line className="line-chart-axis" x1={chart.left} x2={chart.left} y1={chart.top} y2={chart.bottom} />
+            <line className="line-chart-axis" x1={chart.left} x2={chart.right} y1={chart.bottom} y2={chart.bottom} />
             {chart.linePath ? <path className="line-chart-line" d={chart.linePath} /> : null}
             {chart.points.map((point) => (
               <circle className="line-chart-point" cx={point.x} cy={point.y} key={point.label} r="4" />
             ))}
           </svg>
           {!hasPlottedData ? <div className="line-chart-empty">No records in this window</div> : null}
-          <div className="line-chart-scale">
-            <span>Y max: {formatTrendValue(chart.maxValue, prefix, suffix)}</span>
-            <span>Y min: {formatTrendValue(chart.minValue, prefix, suffix)}</span>
-          </div>
-          <div className="line-chart-window">X window: {windowLabel}</div>
+          <div className="line-chart-window">{windowLabel}</div>
         </div>
       )}
     </div>
@@ -3689,15 +3695,16 @@ function toWindowedChartPoints(points: TrendPoint[], dateFrom: string, dateTo: s
 }
 
 function buildLineChart(points: ChartPoint[], yCeilingMultiplier: number) {
-  const left = 44;
+  const left = 82;
   const right = 610;
   const top = 26;
   const bottom = 222;
   const values = points.map((point) => point.value).filter((value): value is number => value !== null);
   const rawMinValue = values.length ? Math.min(...values) : 0;
   const rawMaxValue = values.length ? Math.max(...values) : 0;
-  const minValue = roundAxisDown(Math.min(0, rawMinValue));
-  const maxValue = roundAxisUp(Math.max(10, rawMaxValue * yCeilingMultiplier));
+  const minValue = 0;
+  const maxValue = getAxisMaximum(rawMaxValue, yCeilingMultiplier);
+  const ticks = buildYAxisTicks(minValue, maxValue, top, bottom);
   const range = Math.max(1, maxValue - minValue);
   const plottedPoints = points.map((point, index) => {
     const x = points.length === 1 ? (left + right) / 2 : left + (index / (points.length - 1)) * (right - left);
@@ -3729,10 +3736,15 @@ function buildLineChart(points: ChartPoint[], yCeilingMultiplier: number) {
           ).commands.join(" ");
 
   return {
+    bottom,
+    left,
     linePath,
     maxValue,
     minValue,
-    points: visiblePoints
+    points: visiblePoints,
+    right,
+    ticks,
+    top
   };
 }
 
@@ -4106,8 +4118,32 @@ function roundAxisUp(value: number) {
   return Math.ceil(value / 10) * 10;
 }
 
-function roundAxisDown(value: number) {
-  return Math.floor(value / 10) * 10;
+function getAxisMaximum(value: number, multiplier: number) {
+  return roundAxisUp(Math.max(10, value * multiplier));
+}
+
+function buildYAxisTicks(minValue: number, maxValue: number, top: number, bottom: number) {
+  const maxMarkers = 10;
+  const step = getNiceAxisStep(maxValue - minValue, maxMarkers);
+  const roundedMax = Math.max(step, Math.ceil(maxValue / step) * step);
+  const ticks: { value: number; y: number }[] = [];
+
+  for (let value = minValue; value <= roundedMax; value += step) {
+    const y = bottom - ((value - minValue) / Math.max(1, roundedMax - minValue)) * (bottom - top);
+    ticks.push({ value, y });
+  }
+
+  return ticks.reverse();
+}
+
+function getNiceAxisStep(range: number, maxMarkers: number) {
+  const minimumStep = 10;
+  const roughStep = Math.max(minimumStep, range / Math.max(1, maxMarkers - 1));
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+  const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+
+  return Math.max(minimumStep, niceNormalized * magnitude);
 }
 
 function roundDisplayNumber(value: number) {

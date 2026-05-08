@@ -53,6 +53,12 @@ button {
   border: none;
 }
 
+a[href],
+button:not(:disabled),
+[role="button"] {
+  cursor: pointer;
+}
+
 .btn {
   align-items: center;
   border: 1px solid transparent;
@@ -142,7 +148,7 @@ button {
   color: #445765;
   font-size: 16px;
   font-weight: 800;
-  left: 12px;
+  left: 14px;
   line-height: 1;
   pointer-events: none;
   position: absolute;
@@ -152,7 +158,7 @@ button {
 }
 
 .currency-input input {
-  padding-left: 28px;
+  padding-left: 38px;
 }
 
 .password-guidance {
@@ -196,6 +202,13 @@ label {
   font-weight: 700;
 }
 
+.label-with-tooltip {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  justify-self: start;
+}
+
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -211,6 +224,15 @@ textarea {
   padding: 10px 12px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
   width: 100%;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+select {
+  min-height: 44px;
 }
 
 input:focus {
@@ -1276,11 +1298,11 @@ textarea {
   color: #455867;
   font-size: 11px;
   font-weight: 800;
-  left: -2px;
+  left: 0;
   letter-spacing: 0.06em;
   position: absolute;
   text-transform: uppercase;
-  top: 0;
+  top: -4px;
   z-index: 1;
 }
 
@@ -1312,6 +1334,13 @@ textarea {
   stroke-width: 1.4;
 }
 
+.line-chart-tick-label {
+  fill: #455867;
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: end;
+}
+
 .line-chart-line {
   fill: none;
   filter: drop-shadow(0 3px 4px rgba(32, 53, 69, 0.18));
@@ -1327,26 +1356,13 @@ textarea {
   stroke-width: 3;
 }
 
-.line-chart-scale {
-  color: #455867;
-  display: flex;
-  font-size: 12px;
-  font-weight: 700;
-  justify-content: space-between;
-}
-
-.line-chart-scale {
-  inset: 12px 0 auto;
-  pointer-events: none;
-  position: absolute;
-}
-
 .line-chart-window {
   color: #455867;
   font-size: 12px;
   font-weight: 800;
   margin-top: -2px;
-  text-align: center;
+  padding-right: 12px;
+  text-align: right;
 }
 
 .category-section {
@@ -2101,6 +2117,12 @@ textarea {
   justify-content: space-between;
   padding: 12px 14px;
   text-align: left;
+}
+
+button.preview-row:hover,
+.dashboard-garage-row:hover {
+  border-color: #b89568;
+  box-shadow: 0 8px 18px rgba(13, 23, 31, 0.1);
 }
 
 .preview-row-stack {
