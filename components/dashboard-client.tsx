@@ -1193,14 +1193,14 @@ function DashboardHomeView({
           <div className="workspace-panel-header">
             <div>
               <h2>Garage</h2>
-              <p>Your current fleet at a glance.</p>
+              <p>Fleet snapshot.</p>
             </div>
             <Link className="section-link" href="/garage">
               Open Garage
             </Link>
           </div>
           {cars.length === 0 ? (
-            <div className="empty-inline">No vehicles yet. Add your first vehicle to start tracking.</div>
+            <div className="empty-inline">Add a vehicle to activate your fleet dashboard.</div>
           ) : (
             <div className="dashboard-garage-list">
               {cars.slice(0, 5).map((car) => (
@@ -1229,11 +1229,11 @@ function DashboardHomeView({
             <div className="workspace-panel-header">
               <div>
                 <h2>Maintenance Watch</h2>
-                <p>Vehicles needing attention now.</p>
+                <p>Priority service signals.</p>
               </div>
             </div>
             {attentionItems.length === 0 ? (
-              <div className="empty-inline">Everything is currently on schedule.</div>
+              <div className="empty-inline">No maintenance alerts.</div>
             ) : (
               <div className="watch-preview-list">
                 {[...overdueAttentionItems, ...dueSoonAttentionItems].slice(0, 6).map((item) => (
@@ -1260,14 +1260,14 @@ function DashboardHomeView({
             <div className="workspace-panel-header">
               <div>
                 <h2>Recent Service</h2>
-                <p>Latest work logged across your garage.</p>
+                <p>Latest maintenance activity.</p>
               </div>
               <Link className="section-link" href="/services">
                 Open Analytics
               </Link>
             </div>
             {recentServices.length === 0 ? (
-              <div className="empty-inline">Recent service activity will appear here once you log maintenance.</div>
+              <div className="empty-inline">No service activity yet.</div>
             ) : (
               <div className="preview-list">
                 {recentServices.slice(0, 6).map((service) => (
@@ -1325,11 +1325,11 @@ function GarageIndexView({
         <div className="workspace-panel-header">
           <div>
             <h2>All Vehicles</h2>
-            <p>Open records to update mileage, service history, or vehicle details.</p>
+            <p>Vehicle records, service status, and insights.</p>
           </div>
         </div>
         {cars.length === 0 ? (
-          <div className="empty-inline">No vehicles yet. Use Add Vehicle to create your first record.</div>
+          <div className="empty-inline">Your garage is ready for its first vehicle.</div>
         ) : (
           <div className="garage-card-grid">
             {cars.map((car) => {
@@ -1397,7 +1397,7 @@ function VehicleCreateView({
       <div className="workspace-panel-header">
         <div>
           <h2>New Vehicle</h2>
-          <p>Create the vehicle profile first. Mileage and service history stay as separate actions later.</p>
+          <p>Core vehicle profile.</p>
         </div>
       </div>
 
@@ -1517,7 +1517,7 @@ function AnalyticsIndexView({
           <div className="workspace-panel-header">
             <div>
               <h2>Cost Summary</h2>
-              <p>High-level service spending across the garage.</p>
+              <p>Fleet service spend.</p>
             </div>
           </div>
           <div className="detail-list">
@@ -1544,11 +1544,11 @@ function AnalyticsIndexView({
           <div className="workspace-panel-header">
             <div>
               <h2>Highest Cost Vehicles</h2>
-              <p>The vehicles absorbing the most recorded spend so far.</p>
+              <p>Vehicles with the highest recorded spend.</p>
             </div>
           </div>
           {topCostVehicles.length === 0 ? (
-            <div className="empty-inline">Vehicle spending will appear here once you log service costs.</div>
+            <div className="empty-inline">Cost insights appear after priced service records are added.</div>
           ) : (
             <div className="preview-list">
               {topCostVehicles.map((car) => (
@@ -1572,7 +1572,7 @@ function AnalyticsIndexView({
         <div className="workspace-panel-header">
           <div>
             <h2>Recent Activity</h2>
-            <p>The latest service work recorded across every vehicle.</p>
+            <p>Latest service events across the fleet.</p>
           </div>
         </div>
         {recentServices.length === 0 ? (
@@ -1621,7 +1621,7 @@ function AccountWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Profile</h2>
-            <p>Update the account information tied to this login.</p>
+            <p>Workspace identity.</p>
           </div>
         </div>
         <form className="form-grid" onSubmit={handleSaveProfile}>
@@ -1657,7 +1657,7 @@ function AccountWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Account</h2>
-            <p>Reference information for the signed-in user.</p>
+            <p>Account reference.</p>
           </div>
         </div>
         <dl className="detail-list">
@@ -1810,7 +1810,7 @@ function VehicleWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>{car.carName}</h2>
-            <p>Use this page for data entry, corrections, and vehicle settings.</p>
+            <p>Service operations and mileage tracking.</p>
           </div>
           <button className="btn btn-secondary" onClick={() => openVehicleInsightsPage(car.carId)} type="button">
             View Trends and Timeline
@@ -1828,7 +1828,7 @@ function VehicleWorkspaceView({
             ))}
           </div>
         ) : (
-          <div className="empty-inline">No mileage reminders are configured for this vehicle.</div>
+          <div className="empty-inline">No mileage-based reminders configured.</div>
         )}
       </section>
 
@@ -1837,7 +1837,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Update Mileage</h2>
-              <p>Add a mileage entry without changing service history.</p>
+              <p>Log an odometer reading.</p>
             </div>
           </div>
           <form className="form-grid" onSubmit={handleUpdateMileage}>
@@ -1862,7 +1862,7 @@ function VehicleWorkspaceView({
                   type="number"
                   value={mileageForm.mileage}
                 />
-                <div className="field-hint">Starts from the current recorded mileage by default.</div>
+                <div className="field-hint">Current mileage is the default minimum.</div>
               </div>
             </div>
             <div className="field-group">
@@ -1892,7 +1892,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Add Service</h2>
-              <p>Log a service record separately from the vehicle profile.</p>
+              <p>Record completed maintenance.</p>
             </div>
           </div>
           <form className="form-grid" onSubmit={handleAddService}>
@@ -1918,7 +1918,7 @@ function VehicleWorkspaceView({
                   type="number"
                   value={serviceForm.mileage}
                 />
-                <div className="field-hint">Starts from the current recorded mileage by default.</div>
+                <div className="field-hint">Current mileage is the default minimum.</div>
               </div>
             </div>
             <div className="field-row">
@@ -1978,7 +1978,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Service History</h2>
-              <p>Edit or delete incorrect records. Use the arrows to move through older entries.</p>
+              <p>Maintenance ledger.</p>
             </div>
             {car.serviceHistory.length > serviceHistoryPageSize ? (
               <div className="section-pager">
@@ -2133,7 +2133,7 @@ function VehicleWorkspaceView({
           <div className="workspace-panel-header">
             <div>
               <h2>Mileage Log</h2>
-              <p>Edit manual mileage entries when needed.</p>
+              <p>Odometer history.</p>
             </div>
           </div>
           <table className="workspace-table">
@@ -2234,7 +2234,7 @@ function VehicleWorkspaceView({
         <div className="workspace-panel-header">
           <div>
             <h2>Vehicle Settings</h2>
-            <p>Open this only when you need to update the base vehicle profile or delete the record.</p>
+            <p>Profile and reminder configuration.</p>
           </div>
           <button
             className="btn btn-secondary"
@@ -2336,7 +2336,7 @@ function VehicleWorkspaceView({
             </div>
           </form>
         ) : (
-          <div className="empty-inline">Settings stay tucked away until you need to edit or remove the vehicle.</div>
+          <div className="empty-inline">Settings are collapsed.</div>
         )}
       </section>
     </div>
@@ -2403,7 +2403,7 @@ function VehicleInsightsView({
         <div className="workspace-panel-header">
           <div>
             <h2>Trend Filters</h2>
-            <p>Keep the analysis separate from day-to-day data entry.</p>
+            <p>Focus the reporting window.</p>
           </div>
         </div>
         <div className="toolbar-grid">
@@ -2445,14 +2445,14 @@ function VehicleInsightsView({
 
       <div className="trend-grid">
         <TrendCard
-          emptyLabel="Mileage trend will appear after a few recorded entries."
+          emptyLabel="Mileage trends appear after multiple odometer entries."
           label="Mileage Trend"
           points={trendMileagePoints}
           prefix=""
           suffix=" mi"
         />
         <TrendCard
-          emptyLabel="Expense trend will appear after you add priced service records."
+          emptyLabel="Expense trends appear after priced service records."
           label="Expense Trend"
           points={trendExpensePoints}
           prefix="$"
@@ -2464,7 +2464,7 @@ function VehicleInsightsView({
         <div className="workspace-panel-header">
           <div>
             <h2>Expense by Category</h2>
-            <p>Cost concentration across service types.</p>
+            <p>Spend distribution by service type.</p>
           </div>
         </div>
         {trendCategoryExpenses.length === 0 ? (
@@ -2482,7 +2482,7 @@ function VehicleInsightsView({
         <div className="workspace-panel-header">
           <div>
             <h2>Mileage Timeline</h2>
-            <p>A chronological view of all recorded mileage entries.</p>
+            <p>Chronological odometer activity.</p>
           </div>
         </div>
         <div className="timeline-list">
@@ -2507,38 +2507,38 @@ function getPageMeta(view: DashboardView, selectedCar: CarDetails | null) {
     case "garage":
       return {
         title: "Garage",
-        description: "A clean list of every vehicle in the account, with direct paths into records and insights."
+        description: "Manage fleet records, service status, and vehicle insights."
       };
     case "new-vehicle":
       return {
         title: "Add Vehicle",
-        description: "Create the vehicle first, then maintain the records from its own page."
+        description: "Create a vehicle profile for service and mileage tracking."
       };
     case "vehicle":
       return {
         title: selectedCar?.carName ?? "Vehicle Records",
-        description: "Mileage updates, service updates, and settings live here instead of on the dashboard."
+        description: "Maintain service records, mileage entries, and reminder settings."
       };
     case "vehicle-insights":
       return {
         title: selectedCar ? `${selectedCar.carName} Insights` : "Vehicle Insights",
-        description: "Trend analysis, reminder context, and timeline views stay on their own page."
+        description: "Review cost trends, mileage patterns, and service history."
       };
     case "services":
       return {
         title: "Fleet Analytics",
-        description: "Overall cost, activity, and maintenance summary across every vehicle in the garage."
+        description: "Monitor maintenance spend, activity, and fleet performance."
       };
     case "account":
       return {
         title: "Account",
-        description: "Profile details and account information, separated from the vehicle workspace."
+        description: "Manage your profile and account reference details."
       };
     case "dashboard":
     default:
       return {
         title: "Dashboard",
-        description: "The one-page summary for the garage, recent activity, and maintenance status."
+        description: "A focused view of fleet health, spend, and recent activity."
       };
   }
 }
@@ -2569,7 +2569,7 @@ function ReminderRuleEditor({
       <div className="detail-section-heading reminder-editor-heading">
         <div>
           <label>Mileage Reminders</label>
-          <p>Optional. Track only the service categories you want monitored by mileage.</p>
+          <p>Configure mileage-based service intervals.</p>
         </div>
         <button
           className="btn btn-inline"
@@ -2583,7 +2583,7 @@ function ReminderRuleEditor({
 
       {rules.length === 0 ? (
         <div className="service-card">
-          <div className="service-notes muted-text">No mileage reminders configured yet.</div>
+          <div className="service-notes muted-text">No reminder intervals configured.</div>
         </div>
       ) : (
         <div className="reminder-editor-list">
