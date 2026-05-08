@@ -2047,6 +2047,14 @@ textarea {
   gap: 8px;
 }
 
+.history-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .section-pager-label {
   color: #455867;
   font-size: 12px;

@@ -826,6 +826,7 @@ export function DashboardClient({
 
       const updatedCar = payload as CarDetails;
       syncSelectedCar(updatedCar);
+      cancelEditingService();
       await refreshCars();
       await refreshServerData();
       setMessage({ type: "success", text: "Service record updated." });
@@ -905,6 +906,7 @@ export function DashboardClient({
 
       const updatedCar = payload as CarDetails;
       syncSelectedCar(updatedCar);
+      cancelEditingMileageEntry();
       await refreshCars();
       await refreshServerData();
       setMessage({ type: "success", text: "Mileage entry updated." });
@@ -2288,10 +2290,12 @@ function VehicleWorkspaceView({
 }) {
   const [showVehicleSettings, setShowVehicleSettings] = useState(false);
   const [serviceHistoryPage, setServiceHistoryPage] = useState(0);
+  const [serviceHistorySort, setServiceHistorySort] = useState<"newest" | "oldest">("newest");
 
   useEffect(() => {
     setShowVehicleSettings(false);
     setServiceHistoryPage(0);
+    setServiceHistorySort("newest");
   }, [car?.carId]);
 
   if (!car) {
@@ -2302,10 +2306,17 @@ function VehicleWorkspaceView({
     );
   }
 
-  const serviceHistoryPageSize = 4;
-  const serviceHistoryPageCount = Math.max(1, Math.ceil(car.serviceHistory.length / serviceHistoryPageSize));
+  const sortedServiceHistory = [...car.serviceHistory].sort((left, right) => {
+    const dateOrder = parseDisplayDate(left.date).getTime() - parseDisplayDate(right.date).getTime();
+    const idOrder = left.serviceId - right.serviceId;
+    const order = dateOrder || idOrder;
+
+    return serviceHistorySort === "oldest" ? order : -order;
+  });
+  const serviceHistoryPageSize = 8;
+  const serviceHistoryPageCount = Math.max(1, Math.ceil(sortedServiceHistory.length / serviceHistoryPageSize));
   const activeServiceHistoryPage = Math.min(serviceHistoryPage, serviceHistoryPageCount - 1);
-  const visibleServiceHistory = car.serviceHistory.slice(
+  const visibleServiceHistory = sortedServiceHistory.slice(
     activeServiceHistoryPage * serviceHistoryPageSize,
     activeServiceHistoryPage * serviceHistoryPageSize + serviceHistoryPageSize
   );
@@ -2485,31 +2496,43 @@ function VehicleWorkspaceView({
               <h2>Service History</h2>
               <p>Maintenance ledger</p>
             </div>
-            {car.serviceHistory.length > serviceHistoryPageSize ? (
-              <div className="section-pager">
-                <button
-                  className="btn btn-inline"
-                  disabled={activeServiceHistoryPage === 0}
-                  onClick={() => setServiceHistoryPage((current) => Math.max(0, current - 1))}
-                  type="button"
-                >
-                  Prev
-                </button>
-                <span className="section-pager-label">
-                  {activeServiceHistoryPage + 1} / {serviceHistoryPageCount}
-                </span>
-                <button
-                  className="btn btn-inline"
-                  disabled={activeServiceHistoryPage >= serviceHistoryPageCount - 1}
-                  onClick={() =>
-                    setServiceHistoryPage((current) => Math.min(serviceHistoryPageCount - 1, current + 1))
-                  }
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            ) : null}
+            <div className="history-toolbar">
+              <button
+                className="btn btn-inline"
+                onClick={() => {
+                  setServiceHistorySort((current) => (current === "newest" ? "oldest" : "newest"));
+                  setServiceHistoryPage(0);
+                }}
+                type="button"
+              >
+                {serviceHistorySort === "newest" ? "Newest First" : "Oldest First"}
+              </button>
+              {sortedServiceHistory.length > serviceHistoryPageSize ? (
+                <div className="section-pager">
+                  <button
+                    className="btn btn-inline"
+                    disabled={activeServiceHistoryPage === 0}
+                    onClick={() => setServiceHistoryPage((current) => Math.max(0, current - 1))}
+                    type="button"
+                  >
+                    Prev
+                  </button>
+                  <span className="section-pager-label">
+                    {activeServiceHistoryPage + 1} / {serviceHistoryPageCount}
+                  </span>
+                  <button
+                    className="btn btn-inline"
+                    disabled={activeServiceHistoryPage >= serviceHistoryPageCount - 1}
+                    onClick={() =>
+                      setServiceHistoryPage((current) => Math.min(serviceHistoryPageCount - 1, current + 1))
+                    }
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
           {car.serviceHistory.length === 0 ? (
             <div className="empty-inline">No service records yet</div>
@@ -3972,21 +3995,28 @@ function getLatestChartValue(points: ChartPoint[]) {
 }
 
 function formatDateForServiceApi(value: string) {
-  const [year, month, day] = value.split("-");
-  if (!year || !month || !day) {
-    return value;
+  const trimmed = value.trim();
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (isoMatch) {
+    return `${isoMatch[2]}/${isoMatch[3]}/${isoMatch[1].slice(-2)}`;
   }
 
-  return `${month}/${day}/${year.slice(-2)}`;
+  return trimmed;
 }
 
 function formatDateForInput(value: string) {
-  const [month, day, year] = value.split("/");
-  if (!month || !day || !year) {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const displayMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(trimmed);
+  if (!displayMatch) {
     return todayIso();
   }
 
-  return `20${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const year = displayMatch[3].length === 2 ? `20${displayMatch[3]}` : displayMatch[3];
+  return `${year}-${displayMatch[1].padStart(2, "0")}-${displayMatch[2].padStart(2, "0")}`;
 }
 
 function parseDisplayDate(value: string) {
